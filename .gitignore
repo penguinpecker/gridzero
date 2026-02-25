@@ -6,3 +6,4 @@ cache/
 typechain-types/
 .next/
 out/
+.env.save
