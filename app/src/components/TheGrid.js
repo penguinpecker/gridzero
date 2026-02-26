@@ -7,7 +7,7 @@ import { base } from "viem/chains";
 // ═══════════════════════════════════════════════════════════════
 // V4 CONTRACT ABI — GridZero: Round-Based Betting on Base (Auto-Pay)
 // GridZeroV4: 0x58497ADCc524ee9a0DA11900af32bFa973fE55d3
-// ZeroToken: 0xB68409d54a5a28e9ca6c2B7A54F3DD78E6Eef859
+// ZeroToken: 0x5E9335199d98402897fA5d3A5F21572280cdCDD0
 // USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 // Chain: Base Mainnet (8453)
 // ═══════════════════════════════════════════════════════════════
@@ -73,7 +73,7 @@ const USDC_ABI = [
 ];
 
 const GRID_ADDR = "0x58497ADCc524ee9a0DA11900af32bFa973fE55d3";
-const TOKEN_ADDR = "0xB68409d54a5a28e9ca6c2B7A54F3DD78E6Eef859";
+const TOKEN_ADDR = "0x5E9335199d98402897fA5d3A5F21572280cdCDD0";
 const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const CELL_COST = "1";  // 1 USDC
 const CELL_COST_RAW = 1000000n; // 1 USDC in 6 decimals
