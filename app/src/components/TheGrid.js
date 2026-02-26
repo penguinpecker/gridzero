@@ -5,8 +5,8 @@ import { createPublicClient, createWalletClient, custom, http, fallback, parseUn
 import { base } from "viem/chains";
 
 // ═══════════════════════════════════════════════════════════════
-// V3 CONTRACT ABI — GridZero: Round-Based Betting on Base
-// GridZeroV3: 0xa106dD7567e5d4368C325f4aB1022a8f1786a59f
+// V4 CONTRACT ABI — GridZero: Round-Based Betting on Base (Auto-Pay)
+// GridZeroV4: 0x58497ADCc524ee9a0DA11900af32bFa973fE55d3
 // ZeroToken: 0xB68409d54a5a28e9ca6c2B7A54F3DD78E6Eef859
 // USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 // Chain: Base Mainnet (8453)
@@ -40,8 +40,6 @@ const GRID_ABI = [
     outputs: [{ name: "", type: "uint8" }] },
   { name: "pickCell", type: "function", stateMutability: "nonpayable",
     inputs: [{ name: "cell", type: "uint8" }], outputs: [] },
-  { name: "claim", type: "function", stateMutability: "nonpayable",
-    inputs: [{ name: "roundId", type: "uint256" }], outputs: [] },
   { name: "entryFee", type: "function", stateMutability: "view",
     inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { name: "roundDuration", type: "function", stateMutability: "view",
@@ -49,9 +47,6 @@ const GRID_ABI = [
   { name: "zeroPerRound", type: "function", stateMutability: "view",
     inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { name: "hasJoined", type: "function", stateMutability: "view",
-    inputs: [{ name: "roundId", type: "uint256" }, { name: "player", type: "address" }],
-    outputs: [{ name: "", type: "bool" }] },
-  { name: "hasClaimed", type: "function", stateMutability: "view",
     inputs: [{ name: "roundId", type: "uint256" }, { name: "player", type: "address" }],
     outputs: [{ name: "", type: "bool" }] },
   { name: "getCellCounts", type: "function", stateMutability: "view",
@@ -77,7 +72,7 @@ const USDC_ABI = [
     inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
 ];
 
-const GRID_ADDR = "0xa106dD7567e5d4368C325f4aB1022a8f1786a59f";
+const GRID_ADDR = "0x58497ADCc524ee9a0DA11900af32bFa973fE55d3";
 const TOKEN_ADDR = "0xB68409d54a5a28e9ca6c2B7A54F3DD78E6Eef859";
 const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const CELL_COST = "1";  // 1 USDC
@@ -141,6 +136,8 @@ export default function TheGrid() {
   const [playerCell, setPlayerCell] = useState(-1);
   const [gridBalance, setGridBalance] = useState("0");
   const [ethBalance, setEthBalance] = useState("0");
+  const [usdcApproved, setUsdcApproved] = useState(false);
+  const [approving, setApproving] = useState(false);
 
   // UI state
   const [smoothTime, setSmoothTime] = useState(0);
@@ -325,6 +322,16 @@ export default function TheGrid() {
           setEthBalance(usdcBal.toString());
         } catch (e) {
           console.error("Poll: USDC balance failed", e);
+        }
+
+        try {
+          const allowance = await publicClient.readContract({
+            address: USDC_ADDR, abi: USDC_ABI, functionName: "allowance",
+            args: [address, GRID_ADDR],
+          });
+          setUsdcApproved(allowance >= CELL_COST_RAW);
+        } catch (e) {
+          console.error("Poll: allowance check failed", e);
         }
       }
 
@@ -572,7 +579,37 @@ export default function TheGrid() {
     }
   }, [resolved, winningCell]);
 
-  // ─── Pick Cell (via Privy embedded wallet) — USDC approval + pickCell ───
+  // ─── One-Time USDC Approval ───
+  const approveUsdc = async () => {
+    if (!wallet || approving) return;
+    setApproving(true);
+    setError(null);
+    try {
+      await wallet.switchChain(8453);
+      const provider = await wallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: address, chain: base, transport: custom(provider),
+      });
+      addFeed("Approving USDC (one-time)...");
+      const approveData = encodeFunctionData({
+        abi: USDC_ABI, functionName: "approve",
+        args: [GRID_ADDR, parseUnits("1000000", 6)],
+      });
+      const approveHash = await walletClient.sendTransaction({
+        to: USDC_ADDR, data: approveData, gas: 100000n,
+      });
+      await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      setUsdcApproved(true);
+      addFeed("USDC approved ✓ — double-tap any cell to play!");
+    } catch (e) {
+      const msg = e.shortMessage || e.message || "Approval failed";
+      setError(msg);
+      addFeed(`✗ Approval failed: ${msg.slice(0, 80)}`);
+    }
+    setApproving(false);
+  };
+
+  // ─── Pick Cell (via Privy embedded wallet) — direct pickCell, approval already done ───
   const claimCell = async (cellIndex) => {
     if (!wallet || claiming) return;
     setClaiming(true);
@@ -591,24 +628,6 @@ export default function TheGrid() {
         chain: base,
         transport: custom(provider),
       });
-
-      // Check USDC allowance and approve if needed
-      const allowance = await publicClient.readContract({
-        address: USDC_ADDR, abi: USDC_ABI, functionName: "allowance",
-        args: [address, GRID_ADDR],
-      });
-      if (allowance < CELL_COST_RAW) {
-        addFeed("Approving USDC...");
-        const approveData = encodeFunctionData({
-          abi: USDC_ABI, functionName: "approve",
-          args: [GRID_ADDR, parseUnits("1000000", 6)],
-        });
-        const approveHash = await walletClient.sendTransaction({
-          to: USDC_ADDR, data: approveData, gas: 100000n,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
-        addFeed("USDC approved ✓");
-      }
 
       // Encode the pickCell call
       const data = encodeFunctionData({
@@ -714,8 +733,7 @@ export default function TheGrid() {
   };
 
   const canClaim = (idx) => {
-    // V3: multiple players per cell — only restriction is one entry per player per round
-    return !resolved && smoothTime > 0 && authenticated && playerCell < 0;
+    return !resolved && smoothTime > 0 && authenticated && playerCell < 0 && usdcApproved;
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -979,8 +997,18 @@ export default function TheGrid() {
             ))}
           </div>
 
+          {/* Approve USDC — one-time, shows when connected but not approved */}
+          {authenticated && !usdcApproved && !approving && (
+            <button style={{ ...S.claimBtn, maxWidth: 520, marginTop: 12, background: "linear-gradient(135deg, #ff8800, #ff6600)" }} onClick={approveUsdc}>
+              🔓 APPROVE USDC TO PLAY (ONE-TIME)
+            </button>
+          )}
+          {approving && (
+            <div style={{ ...S.claimingBar, maxWidth: 520, marginTop: 12 }}><div style={S.claimingDot} />APPROVING USDC...</div>
+          )}
+
           {/* Quick instruction */}
-          {authenticated && playerCell < 0 && !resolved && smoothTime > 0 && (
+          {authenticated && usdcApproved && playerCell < 0 && !resolved && smoothTime > 0 && (
             <div style={{
               width: "100%", maxWidth: 520, textAlign: "center",
               padding: "8px 12px", marginTop: 6,
@@ -992,7 +1020,7 @@ export default function TheGrid() {
           )}
 
           {/* Claim button — below grid */}
-          {selectedCell !== null && !claiming && authenticated && (
+          {selectedCell !== null && !claiming && authenticated && usdcApproved && (
             <button style={{ ...S.claimBtn, maxWidth: 520, marginTop: 12 }} onClick={() => claimCell(selectedCell)}>
               ⛏ CLAIM CELL {CELL_LABELS[selectedCell]} — {CELL_COST} USDC
             </button>
