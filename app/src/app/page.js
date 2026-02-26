@@ -1,7 +1,10 @@
-import GridZero from "@/components/GridZero";
-export const metadata = {
-  title: "GridZero — Provably Fair Mining (zkVerify × Base)",
-};
+"use client";
+import dynamic from "next/dynamic";
+
+const TheGrid = dynamic(() => import("../components/TheGrid"), {
+  ssr: false,
+});
+
 export default function Home() {
-  return <GridZero />;
+  return <TheGrid />;
 }

@@ -1,0 +1,19 @@
+{
+  "network": "base-mainnet",
+  "chainId": 8453,
+  "deployer": "0xAFd7b1eB1f78c47b603C670f47956cDC9977998E",
+  "timestamp": "2026-02-26T09:20:11.896Z",
+  "contracts": {
+    "ZeroToken": "0xB68409d54a5a28e9ca6c2B7A54F3DD78E6Eef859",
+    "GridZeroV2": "0xAd38008DF25909366d23f4b12dEADBD8cC586a26",
+    "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+  },
+  "config": {
+    "fulfiller": "0xAFd7b1eB1f78c47b603C670f47956cDC9977998E",
+    "feeRecipient": "0xAFd7b1eB1f78c47b603C670f47956cDC9977998E",
+    "entryFee": "1000000",
+    "roundDuration": 30,
+    "protocolFeeBps": 1000,
+    "zeroPerRound": "1000000000000000000"
+  }
+}

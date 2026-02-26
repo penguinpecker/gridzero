@@ -1,69 +1,81 @@
-import { createPublicClient, http, fallback, defineChain } from "viem";
+import { createPublicClient, http, fallback } from "viem";
 import { base } from "viem/chains";
 
 // ═══════════════════════════════════════════════════════════════
-// Contract Addresses — Base Mainnet
+// Contract Addresses — Base Mainnet (V3)
 // ═══════════════════════════════════════════════════════════════
-export const GRIDZERO_ADDR = "0x561e4419bC46ABfC2EBddC536308674A5b6d1D8f";
-export const ORE_TOKEN_ADDR = "0x5AAA886aEb136F9AaeC967CA988f459639cd8954";
-export const ZKVERIFY_ATTESTATION_ADDR = "0xCb47A3C3B9Eb2E549a3F2EA4729De28CafbB2b69";
+export const GRIDZERO_V3_ADDR = "0xa106dD7567e5d4368C325f4aB1022a8f1786a59f";
+export const ZERO_TOKEN_ADDR = "0xB68409d54a5a28e9ca6c2B7A54F3DD78E6Eef859";
+export const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 // ═══════════════════════════════════════════════════════════════
-// zkVerify Config
+// Supabase — Public reads via anon key (RLS allows SELECT for all)
 // ═══════════════════════════════════════════════════════════════
-export const ZKVERIFY_WS = "wss://mainnet-rpc.zkverify.io";
-export const ZKVERIFY_DOMAINS = {
-  VRF: 4,         // Groth16 VRF mining proofs (aggregation=16)
-  LEADERBOARD: 5, // RISC Zero leaderboard proofs (aggregation=4)
-  DIFFICULTY: 6,  // EZKL difficulty model proofs (aggregation=2)
-};
-
-export const VRF_VKEY_HASH = "0x422e4c8b794e4af83529f337ac5bfb9bf97d4e17637c931cc47d54e31a1469f5";
+export const SUPABASE_URL = "https://dqvwpbggjlcumcmlliuj.supabase.co";
+export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxdndwYmdnamxjdW1jbWxsaXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MzA2NjIsImV4cCI6MjA4NjIwNjY2Mn0.yrkg3mv62F-DiGA8-cajSSkwnhKBXRbVlr4ye6bdfTc";
 
 // ═══════════════════════════════════════════════════════════════
-// Grid Config
+// V3 ABI — Round-based betting game
 // ═══════════════════════════════════════════════════════════════
-export const GRID_SIZE = 32;
-export const VISIBLE_SIZE = 10;
-export const SECRET_SEED = "42069"; // VRF secret seed (demo)
-export const DIFFICULTY = 128;
-
-// ═══════════════════════════════════════════════════════════════
-// Ore Definitions
-// ═══════════════════════════════════════════════════════════════
-export const ORES = [
-  { name: "Stone",   color: "#6a7b8e", glow: "#8a9bae", tier: "Common",    emoji: "◇", score: 1,   tokenId: 0 },
-  { name: "Coal",    color: "#4a5a6e", glow: "#6a7b8e", tier: "Common",    emoji: "◆", score: 2,   tokenId: 1 },
-  { name: "Iron",    color: "#9aa8b8", glow: "#c0ccd8", tier: "Uncommon",  emoji: "▣", score: 5,   tokenId: 2 },
-  { name: "Copper",  color: "#ff6633", glow: "#ff8855", tier: "Uncommon",  emoji: "◈", score: 5,   tokenId: 3 },
-  { name: "Silver",  color: "#c0c8d0", glow: "#e0e8f0", tier: "Rare",     emoji: "◎", score: 15,  tokenId: 4 },
-  { name: "Gold",    color: "#ff8800", glow: "#ffaa33", tier: "Rare",     emoji: "✦", score: 25,  tokenId: 5 },
-  { name: "Diamond", color: "#00b4ff", glow: "#44ccff", tier: "Epic",     emoji: "◆", score: 100, tokenId: 6 },
-  { name: "Mythril", color: "#cc44ff", glow: "#dd77ff", tier: "Legendary", emoji: "✧", score: 500, tokenId: 7 },
+export const GRIDZERO_V3_ABI = [
+  { name: "currentRoundId", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { name: "rounds", type: "function", stateMutability: "view",
+    inputs: [{ name: "roundId", type: "uint256" }],
+    outputs: [
+      { name: "startTime", type: "uint64" }, { name: "endTime", type: "uint64" },
+      { name: "totalDeposits", type: "uint256" }, { name: "totalPlayers", type: "uint256" },
+      { name: "winningCell", type: "uint8" }, { name: "resolved", type: "bool" },
+      { name: "isBonusRound", type: "bool" },
+    ],
+  },
+  { name: "getCurrentRound", type: "function", stateMutability: "view", inputs: [],
+    outputs: [
+      { name: "roundId", type: "uint256" }, { name: "startTime", type: "uint64" },
+      { name: "endTime", type: "uint64" }, { name: "totalDeposits", type: "uint256" },
+      { name: "totalPlayers", type: "uint256" }, { name: "timeRemaining", type: "uint256" },
+    ],
+  },
+  { name: "getCellCounts", type: "function", stateMutability: "view",
+    inputs: [{ name: "roundId", type: "uint256" }], outputs: [{ name: "counts", type: "uint256[25]" }],
+  },
+  { name: "getCellPlayers", type: "function", stateMutability: "view",
+    inputs: [{ name: "roundId", type: "uint256" }, { name: "cell", type: "uint8" }], outputs: [{ type: "address[]" }],
+  },
+  { name: "isWinner", type: "function", stateMutability: "view",
+    inputs: [{ name: "roundId", type: "uint256" }, { name: "player", type: "address" }], outputs: [{ type: "bool" }],
+  },
+  { name: "hasJoined", type: "function", stateMutability: "view",
+    inputs: [{ name: "roundId", type: "uint256" }, { name: "player", type: "address" }], outputs: [{ type: "bool" }],
+  },
+  { name: "hasClaimed", type: "function", stateMutability: "view",
+    inputs: [{ name: "roundId", type: "uint256" }, { name: "player", type: "address" }], outputs: [{ type: "bool" }],
+  },
+  { name: "playerCell", type: "function", stateMutability: "view",
+    inputs: [{ name: "roundId", type: "uint256" }, { name: "player", type: "address" }], outputs: [{ type: "uint8" }],
+  },
+  { name: "entryFee", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { name: "getPotentialPayout", type: "function", stateMutability: "view",
+    inputs: [{ name: "cell", type: "uint8" }],
+    outputs: [{ name: "usdcPayout", type: "uint256" }, { name: "zeroPayout", type: "uint256" }],
+  },
+  { name: "pickCell", type: "function", stateMutability: "nonpayable", inputs: [{ name: "cell", type: "uint8" }], outputs: [] },
+  { name: "claim", type: "function", stateMutability: "nonpayable", inputs: [{ name: "roundId", type: "uint256" }], outputs: [] },
 ];
 
-export const TIER_COLOR = {
-  Common: "#5a6a7e",
-  Uncommon: "#ff6633",
-  Rare: "#ff8800",
-  Epic: "#00b4ff",
-  Legendary: "#cc44ff",
-};
-
-// ═══════════════════════════════════════════════════════════════
-// Pipeline Stage Definitions
-// ═══════════════════════════════════════════════════════════════
-export const PIPELINE_STAGES = [
-  { id: "generate",  label: "GROTH16 PROOF",    icon: "⚡", desc: "Circom VRF circuit → snarkjs fullProve" },
-  { id: "verify",    label: "LOCAL VERIFY",      icon: "◆", desc: "snarkjs groth16.verify(vkey, pub, proof)" },
-  { id: "submit",    label: "ZKVERIFY SUBMIT",   icon: "↗", desc: "zkVerifyJS → Domain #4 → Groth16 verifier" },
-  { id: "aggregate", label: "PROOF AGGREGATION", icon: "▦", desc: "16 proofs → Merkle tree → AggregationReceipt" },
-  { id: "attest",    label: "BASE ATTESTATION",  icon: "◎", desc: "Aggregation root relayed to Base chain" },
-  { id: "settle",    label: "ON-CHAIN SETTLE",   icon: "✓", desc: "settleMining() + Merkle inclusion proof" },
+export const ERC20_ABI = [
+  { name: "approve", type: "function", stateMutability: "nonpayable",
+    inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }],
+  },
+  { name: "allowance", type: "function", stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ type: "uint256" }],
+  },
+  { name: "balanceOf", type: "function", stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }],
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// Public Client — Base Mainnet (we control the RPC, not MetaMask)
+// Public Client — Base Mainnet
 // ═══════════════════════════════════════════════════════════════
 export const publicClient = createPublicClient({
   chain: base,
