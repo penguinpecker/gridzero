@@ -1,1135 +1,475 @@
-import { useState, useEffect, useRef } from "react";
+"use client";
+import { useEffect, useState } from "react";
 
-const STEPS = [
-  {
-    num: "01",
-    title: "CONNECT",
-    subtitle: "Initialize your terminal",
-    desc: "Hit LOGIN to create or connect your wallet. The Grid uses embedded wallets — no browser extension needed. Your wallet is created instantly via email, Google, or existing wallet.",
-    icon: "⚡",
-    color: "#ff8800",
-  },
-  {
-    num: "02",
-    title: "FUND",
-    subtitle: "Fund your wallet",
-    desc: "Deposit ETH to your The Grid wallet on MegaETH chain. Each grid claim costs 1 USDC. Use the sidebar to view your balance and claim winnings.",
-    icon: "◆",
-    color: "#00b4ff",
-  },
-  {
-    num: "03",
-    title: "CLAIM",
-    subtitle: "Pick your cell",
-    desc: "Select one cell on the 5×5 grid before the 30-second round timer expires. Multiple players can share the same cell — if that cell wins, the pot is split equally. Cells with fewer players mean a bigger payout if you win.",
-    icon: "⛏",
-    color: "#ff6633",
-  },
-  {
-    num: "04",
-    title: "RESOLVE",
-    subtitle: "Guaranteed winner from occupied cells",
-    desc: "When the timer hits zero, a Groth16 VRF proof verified by Kurier provides verifiable randomness to select the winning cell — but only from cells that have players. If you're in the round, someone is guaranteed to win. No more empty-cell outcomes.",
-    icon: "🎲",
-    color: "#c466ff",
-  },
-  {
-    num: "05",
-    title: "WIN",
-    subtitle: "Collect your rewards",
-    desc: "If you're on the winning cell, you split the pot equally with other players on that cell. USDC winnings are claimable from the contract. You also earn ZERO tokens. Hit the motherlode (1/100 chance) for a massive ZERO jackpot.",
-    icon: "🎯",
-    color: "#ffc800",
-  },
-];
+// ═══════════════════════════════════════════════════════════════
+// HOW TO PLAY — Base Theme
+// ═══════════════════════════════════════════════════════════════
 
-const GRID_DEMO = [
-  { label: "A1", state: "empty", count: 0 },
-  { label: "A2", state: "claimed", count: 2 },
-  { label: "A3", state: "empty", count: 0 },
-  { label: "A4", state: "claimed", count: 1 },
-  { label: "A5", state: "empty", count: 0 },
-  { label: "B1", state: "empty", count: 0 },
-  { label: "B2", state: "empty", count: 0 },
-  { label: "B3", state: "yours", count: 3 },
-  { label: "B4", state: "empty", count: 0 },
-  { label: "B5", state: "claimed", count: 1 },
-  { label: "C1", state: "claimed", count: 1 },
-  { label: "C2", state: "empty", count: 0 },
-  { label: "C3", state: "empty", count: 0 },
-  { label: "C4", state: "empty", count: 0 },
-  { label: "C5", state: "empty", count: 0 },
-  { label: "D1", state: "empty", count: 0 },
-  { label: "D2", state: "empty", count: 0 },
-  { label: "D3", state: "claimed", count: 2 },
-  { label: "D4", state: "empty", count: 0 },
-  { label: "D5", state: "empty", count: 0 },
-  { label: "E1", state: "empty", count: 0 },
-  { label: "E2", state: "empty", count: 0 },
-  { label: "E3", state: "empty", count: 0 },
-  { label: "E4", state: "claimed", count: 1 },
-  { label: "E5", state: "empty", count: 0 },
-];
+const GRID_SIZE = 5;
+const CELL_LABELS = [];
+for (let r = 0; r < GRID_SIZE; r++)
+  for (let c = 0; c < GRID_SIZE; c++)
+    CELL_LABELS.push(`${String.fromCharCode(65 + r)}${c + 1}`);
 
-// Animated grid demo that cycles through game states
-function AnimatedGrid() {
-  const [phase, setPhase] = useState(0); // 0=picking, 1=countdown, 2=resolving, 3=winner
-  const [timer, setTimer] = useState(12);
-  const [winCell, setWinCell] = useState(7); // B3
-  const [selectedCell, setSelectedCell] = useState(-1);
-  const [scanX, setScanX] = useState(0);
+// Base logo pattern
+const DARK_CELLS = new Set([0,1,2,3,4, 5,9, 14, 15,19, 20,21,22,23,24]);
+const OPENING_CELLS = new Set([10,11,12,13]);
+const getCellZone = (idx) => {
+  if (DARK_CELLS.has(idx)) return "dark";
+  if (OPENING_CELLS.has(idx)) return "opening";
+  return "light";
+};
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPhase((p) => {
-        if (p === 0) {
-          setSelectedCell(7);
-          return 1;
-        }
-        if (p === 1) {
-          setTimer((t) => {
-            if (t <= 1) return 0;
-            return t - 1;
-          });
-          return 1;
-        }
-        return p;
-      });
-    }, 400);
+// Demo states for the example grid
+const DEMO_CLAIMED = new Set([1, 8, 12]);
+const DEMO_YOURS = 9; // B5
+const DEMO_WINNER = 12; // C3
 
-    // Phase transitions
-    const t1 = setTimeout(() => setPhase(1), 2000);
-    const t2 = setTimeout(() => setPhase(2), 7000);
-    const t3 = setTimeout(() => {
-      setWinCell(7);
-      setPhase(3);
-    }, 9000);
-    const t4 = setTimeout(() => {
-      setPhase(0);
-      setTimer(12);
-      setSelectedCell(-1);
-      setWinCell(-1);
-    }, 13000);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
-  }, []);
-
-  // Reset cycle
-  useEffect(() => {
-    if (phase === 0) {
-      const cycle = setTimeout(() => {
-        setPhase(0);
-        setTimer(12);
-        setSelectedCell(-1);
-        setWinCell(-1);
-      }, 14000);
-      return () => clearTimeout(cycle);
-    }
-  }, [phase]);
-
-  // Scanning animation for resolve phase
-  useEffect(() => {
-    if (phase === 2) {
-      const scan = setInterval(() => {
-        setScanX((x) => (x + 1) % 25);
-      }, 80);
-      return () => clearInterval(scan);
-    }
-  }, [phase]);
-
-  const getPhaseLabel = () => {
-    if (phase === 0) return "SELECT YOUR CELL";
-    if (phase === 1) return `ROUND ACTIVE — ${timer}S`;
-    if (phase === 2) return "RESOLVING...";
-    if (phase === 3) return "🎯 WINNER: B3!";
-    return "";
-  };
-
-  return (
-    <div style={{ width: "100%", maxWidth: 280 }}>
-      <div
-        style={{
-          fontFamily: "'Orbitron', sans-serif",
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: 2,
-          color:
-            phase === 3
-              ? "#ffc800"
-              : phase === 2
-              ? "#c466ff"
-              : phase === 1
-              ? "#ff8800"
-              : "#5a7a6e",
-          textAlign: "center",
-          marginBottom: 8,
-          minHeight: 16,
-          transition: "color 0.3s",
-        }}
-      >
-        {getPhaseLabel()}
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
-          gap: 3,
-        }}
-      >
-        {GRID_DEMO.map((cell, idx) => {
-          const isWinner = phase === 3 && idx === winCell;
-          const isYours = selectedCell === idx;
-          const isClaimed = cell.state === "claimed" || cell.state === "yours";
-          const isScanning = phase === 2 && idx === scanX;
-
-          let bg = "rgba(255,136,0,0.03)";
-          let border = "rgba(255,136,0,0.12)";
-          let color = "#3a4a3e";
-          let shadow = "none";
-
-          if (isWinner) {
-            bg = "rgba(255,200,0,0.2)";
-            border = "rgba(255,200,0,0.6)";
-            color = "#ffc800";
-            shadow = "0 0 12px rgba(255,200,0,0.5)";
-          } else if (isYours && phase >= 1) {
-            bg = "rgba(255,136,0,0.12)";
-            border = "rgba(255,136,0,0.5)";
-            color = "#ff8800";
-            shadow = "0 0 8px rgba(255,136,0,0.3)";
-          } else if (isScanning) {
-            bg = "rgba(196,102,255,0.15)";
-            border = "rgba(196,102,255,0.4)";
-            color = "#c466ff";
-          } else if (isClaimed) {
-            bg = "rgba(255,102,51,0.06)";
-            border = "rgba(255,102,51,0.2)";
-            color = "#ff6633";
-          }
-
-          return (
-            <div
-              key={idx}
-              style={{
-                aspectRatio: "1",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `1px solid ${border}`,
-                borderRadius: 4,
-                background: bg,
-                color,
-                fontSize: 8,
-                fontWeight: 600,
-                fontFamily: "'JetBrains Mono', monospace",
-                transition: "all 0.15s ease",
-                boxShadow: shadow,
-                gap: 1,
-              }}
-            >
-              <span style={{ letterSpacing: 1 }}>{cell.label}</span>
-              {isWinner && <span style={{ fontSize: 12 }}>🎯</span>}
-              {isYours && phase >= 1 && !isWinner && (
-                <span style={{ fontSize: 10 }}>⛏</span>
-              )}
-              {isClaimed && !isYours && !isWinner && (
-                <span style={{ fontSize: 8 }}>{cell.count > 1 ? `${cell.count}×` : "●"}</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// Animated flow diagram
-function FlowDiagram() {
-  const [activeNode, setActiveNode] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveNode((n) => (n + 1) % 5);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const nodes = [
-    { label: "DEPOSIT", icon: "◆", x: 0 },
-    { label: "CLAIM CELL", icon: "⛏", x: 1 },
-    { label: "TIMER ENDS", icon: "⏱", x: 2 },
-    { label: "drand VRF", icon: "🎲", x: 3 },
-    { label: "WIN ETH+GRID", icon: "💰", x: 4 },
-  ];
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0,
-        width: "100%",
-        maxWidth: 600,
-        margin: "0 auto",
-        padding: "20px 0",
-        overflowX: "auto",
-      }}
-    >
-      {nodes.map((node, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 6,
-              flex: 1,
-              opacity: activeNode === i ? 1 : 0.4,
-              transform: activeNode === i ? "scale(1.1)" : "scale(1)",
-              transition: "all 0.5s ease",
-            }}
-          >
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                border: `2px solid ${activeNode === i ? "#ff8800" : "rgba(255,136,0,0.2)"}`,
-                background:
-                  activeNode === i
-                    ? "rgba(255,136,0,0.15)"
-                    : "rgba(255,136,0,0.03)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 16,
-                boxShadow:
-                  activeNode === i ? "0 0 20px rgba(255,136,0,0.3)" : "none",
-                transition: "all 0.5s ease",
-              }}
-            >
-              {node.icon}
-            </div>
-            <span
-              style={{
-                fontSize: 8,
-                fontWeight: 700,
-                letterSpacing: 1.5,
-                fontFamily: "'Orbitron', sans-serif",
-                color: activeNode === i ? "#ff8800" : "#4a5a6e",
-                transition: "color 0.5s ease",
-                textAlign: "center",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {node.label}
-            </span>
-          </div>
-          {i < nodes.length - 1 && (
-            <div
-              style={{
-                width: 30,
-                height: 2,
-                background:
-                  activeNode > i
-                    ? "rgba(255,136,0,0.5)"
-                    : "rgba(255,136,0,0.1)",
-                flexShrink: 0,
-                transition: "background 0.5s ease",
-                position: "relative",
-              }}
-            >
-              {activeNode === i && (
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: -2,
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: "#ff8800",
-                    boxShadow: "0 0 8px #ff8800",
-                    animation: "flowPulse 1s ease-in-out infinite",
-                  }}
-                />
-              )}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Payout breakdown visualization
-function PayoutBreakdown() {
-  const [hovered, setHovered] = useState(-1);
-  const segments = [
-    { label: "WINNERS", pct: 90, color: "#ff8800", desc: "Split equally among all players on the winning cell" },
-    { label: "PROTOCOL FEE", pct: 10, color: "#ff6633", desc: "Supports development, buybacks, and NFT staker rewards" },
-  ];
-
-  return (
-    <div style={{ width: "100%", maxWidth: 400 }}>
-      <div
-        style={{
-          display: "flex",
-          height: 24,
-          borderRadius: 6,
-          overflow: "hidden",
-          border: "1px solid rgba(255,136,0,0.2)",
-        }}
-      >
-        {segments.map((seg, i) => (
-          <div
-            key={i}
-            onMouseEnter={() => setHovered(i)}
-            onMouseLeave={() => setHovered(-1)}
-            style={{
-              width: `${seg.pct}%`,
-              background:
-                hovered === i
-                  ? seg.color
-                  : `${seg.color}44`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 9,
-              fontWeight: 700,
-              fontFamily: "'Orbitron', sans-serif",
-              letterSpacing: 1,
-              color: hovered === i ? "#000" : seg.color,
-              transition: "all 0.3s ease",
-              cursor: "default",
-            }}
-          >
-            {seg.pct}%
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-        {segments.map((seg, i) => (
-          <div key={i} style={{ flex: seg.pct / 100, paddingRight: i === 0 ? 10 : 0 }}>
-            <div
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                color: seg.color,
-                letterSpacing: 1,
-                fontFamily: "'Orbitron', sans-serif",
-              }}
-            >
-              {seg.label}
-            </div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#6a7b8e",
-                marginTop: 2,
-                lineHeight: 1.4,
-              }}
-            >
-              {seg.desc}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// FAQ Accordion
-function FAQ() {
-  const [open, setOpen] = useState(-1);
-  const items = [
-    {
-      q: "What chain is The Grid on?",
-      a: "MegaETH — a high-performance L2 with 10ms block times. This enables 30-second game rounds with near-instant settlement.",
-    },
-    {
-      q: "Is the randomness fair?",
-      a: "Yes. The Grid uses drand (League of Entropy) beacon randomness, which is publicly verifiable and cannot be manipulated by anyone — including the developers.",
-    },
-    {
-      q: "How does the guaranteed winner work?",
-      a: "The winning cell is chosen only from cells that have at least one player. If you're in the round, someone is guaranteed to win — no more empty-cell outcomes eating the pot.",
-    },
-    {
-      q: "Can multiple players pick the same cell?",
-      a: "Yes. Multiple players can share a cell. If that cell wins, the pot is split equally among all players on it. Cells with fewer players mean a bigger individual payout.",
-    },
-    {
-      q: "What is the GRID token?",
-      a: "GRID is an ERC-20 token with a hard cap of 1,000,000. It's minted to round winners. NFT stakers receive a 50% bonus on GRID rewards.",
-    },
-    {
-      q: "What is the Motherlode?",
-      a: "Each round with players has a 1/100 chance (0.16%) of triggering the Motherlode — a massive ZERO jackpot that accumulates every round until it hits.",
-    },
-    {
-      q: "Do I need MetaMask?",
-      a: "No. The Grid uses Privy embedded wallets. Login with email, Google, or any wallet. Your keys are created and stored securely without any extension.",
-    },
-    {
-      q: "How do I withdraw my winnings?",
-      a: "ETH winnings are sent directly to your wallet when your cell wins. You can also withdraw ETH to any address via the menu. If a transfer ever fails, your ETH is safely escrowed and can be claimed via the Withdraw button.",
-    },
-  ];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, width: "100%", maxWidth: 600 }}>
-      {items.map((item, i) => (
-        <div
-          key={i}
-          style={{
-            border: "1px solid rgba(255,136,0,0.1)",
-            borderRadius: 6,
-            overflow: "hidden",
-            background: open === i ? "rgba(255,136,0,0.04)" : "rgba(255,136,0,0.01)",
-            transition: "background 0.3s ease",
-          }}
-        >
-          <button
-            onClick={() => setOpen(open === i ? -1 : i)}
-            style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "12px 16px",
-              background: "none",
-              border: "none",
-              color: open === i ? "#ff8800" : "#8a9bae",
-              fontSize: 12,
-              fontWeight: 600,
-              fontFamily: "'JetBrains Mono', monospace",
-              cursor: "pointer",
-              textAlign: "left",
-              letterSpacing: 0.5,
-              transition: "color 0.2s",
-            }}
-          >
-            <span>{item.q}</span>
-            <span
-              style={{
-                transform: open === i ? "rotate(45deg)" : "rotate(0deg)",
-                transition: "transform 0.3s ease",
-                fontSize: 16,
-                flexShrink: 0,
-                marginLeft: 8,
-              }}
-            >
-              +
-            </span>
-          </button>
-          <div
-            style={{
-              maxHeight: open === i ? 200 : 0,
-              overflow: "hidden",
-              transition: "max-height 0.4s ease",
-            }}
-          >
-            <div
-              style={{
-                padding: "0 16px 14px",
-                fontSize: 11,
-                color: "#6a7b8e",
-                lineHeight: 1.6,
-              }}
-            >
-              {item.a}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Main Page
 export default function HowToPlay() {
-  const [visible, setVisible] = useState(false);
   const [scanLine, setScanLine] = useState(0);
-  const [activeStep, setActiveStep] = useState(-1);
-  const stepRefs = useRef([]);
 
   useEffect(() => {
-    setVisible(true);
-    const scanInterval = setInterval(() => {
-      setScanLine((s) => (s >= 100 ? 0 : s + 0.3));
-    }, 30);
-    return () => clearInterval(scanInterval);
-  }, []);
-
-  // Intersection observer for step animations
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const idx = Number(entry.target.dataset.step);
-            setActiveStep((prev) => Math.max(prev, idx));
-          }
-        });
-      },
-      { threshold: 0.3 }
-    );
-    stepRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref);
-    });
-    return () => observer.disconnect();
+    const id = setInterval(() => setScanLine(p => (p + 0.4) % 110), 40);
+    return () => clearInterval(id);
   }, []);
 
   return (
-    <div
-      style={{
-        fontFamily: "'JetBrains Mono', monospace",
-        background:
-          "radial-gradient(ellipse at 30% 20%, #0f1923 0%, #0a0c0f 50%, #080a0d 100%)",
-        color: "#c8d6e5",
-        minHeight: "100vh",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* CRT scanline */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pointerEvents: "none",
-          zIndex: 2,
-          background: `linear-gradient(180deg,
-            transparent ${scanLine - 2}%,
-            rgba(255,136,0,0.08) ${scanLine - 1}%,
-            rgba(255,136,0,0.2) ${scanLine}%,
-            rgba(255,136,0,0.08) ${scanLine + 1}%,
-            transparent ${scanLine + 2}%)`,
-        }}
-      />
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pointerEvents: "none",
-          zIndex: 1,
-          background:
-            "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px)",
-        }}
-      />
+    <div style={S.root}>
+      {/* Scan line */}
+      <div style={{
+        ...S.scanOverlay,
+        background: `linear-gradient(180deg,
+          transparent ${scanLine - 2}%,
+          rgba(22,82,240,0.12) ${scanLine - 1}%,
+          rgba(22,82,240,0.25) ${scanLine}%,
+          rgba(22,82,240,0.12) ${scanLine + 1}%,
+          transparent ${scanLine + 2}%)`,
+      }} />
+      <div style={S.crtLines} />
 
-      {/* ─── HEADER ─── */}
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "12px 20px",
-          borderBottom: "1px solid rgba(255,136,0,0.12)",
-          background: "rgba(10,12,15,0.95)",
-          zIndex: 10,
-          position: "sticky",
-          top: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#ff6633",
-              boxShadow: "0 0 8px #ff663388",
-              display: "inline-block",
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontWeight: 900,
-              fontSize: 18,
-              color: "#ff6633",
-              letterSpacing: 2,
-            }}
-          >
-            THE
-          </span>
-          <span
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontWeight: 500,
-              fontSize: 18,
-              color: "#e0e8f0",
-              letterSpacing: 2,
-            }}
-          >
-            GRID
-          </span>
-          <span
-            style={{
-              fontSize: 9,
-              padding: "2px 6px",
-              borderRadius: 3,
-              background: "rgba(255,136,0,0.12)",
-              color: "#ff8800",
-              letterSpacing: 1.5,
-              fontWeight: 600,
-            }}
-          >
-            HOW TO PLAY
-          </span>
+      {/* Header */}
+      <header style={S.header}>
+        <div style={S.hLeft}>
+          <span style={S.dot} />
+          <span style={S.logo}>GRID</span>
+          <span style={S.logoSub}>ZERO</span>
+          <span style={S.badge}>HOW TO PLAY</span>
         </div>
-        <a
-          href="/"
-          style={{
-            fontFamily: "'Orbitron', sans-serif",
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "8px 16px",
-            borderRadius: 6,
-            border: "1px solid #ff8800",
-            background:
-              "linear-gradient(135deg, rgba(255,136,0,0.15), rgba(255,136,0,0.05))",
-            color: "#ff8800",
-            cursor: "pointer",
-            letterSpacing: 1.5,
-            textDecoration: "none",
-          }}
-        >
-          ⛏ PLAY NOW
-        </a>
+        <div style={S.hRight}>
+          <a href="/" style={S.backBtn}>← BACK TO GRID</a>
+        </div>
       </header>
 
-      {/* ─── CONTENT ─── */}
-      <div
-        style={{
-          maxWidth: 760,
-          margin: "0 auto",
-          padding: "40px 20px 80px",
-          position: "relative",
-          zIndex: 5,
-        }}
-      >
+      {/* Content */}
+      <div style={S.content}>
         {/* Hero */}
-        <div
-          style={{
-            textAlign: "center",
-            marginBottom: 50,
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(20px)",
-            transition: "all 0.8s ease",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: 11,
-              letterSpacing: 4,
-              color: "#5a6a7e",
-              marginBottom: 12,
-            }}
-          >
-            MINING PROTOCOL v2.0
-          </div>
-          <h1
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: 36,
-              fontWeight: 900,
-              color: "#ff8800",
-              margin: 0,
-              letterSpacing: 3,
-              textShadow: "0 0 40px rgba(255,136,0,0.25)",
-              lineHeight: 1.2,
-            }}
-          >
-            HOW TO PLAY
-          </h1>
-          <p
-            style={{
-              fontSize: 13,
-              color: "#6a7b8e",
-              marginTop: 12,
-              lineHeight: 1.6,
-              maxWidth: 500,
-              marginLeft: "auto",
-              marginRight: "auto",
-            }}
-          >
-            5×5 grid. 30 seconds. Pick a cell. If randomness lands on yours
-            — you win ETH and GRID tokens.
+        <div style={S.hero}>
+          <div style={S.heroTag}>PROTOCOL BRIEFING</div>
+          <h1 style={S.heroTitle}>HOW TO PLAY</h1>
+          <p style={S.heroDesc}>
+            Pick a cell. Lock 1 USDC. A provably fair VRF selects the winning cell.
+            If it's yours, you take the pot. 30-second rounds, fully on-chain.
           </p>
         </div>
 
-        {/* Flow Diagram */}
-        <div
-          style={{
-            marginBottom: 50,
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(20px)",
-            transition: "all 0.8s ease 0.2s",
-          }}
-        >
-          <FlowDiagram />
+        {/* Steps */}
+        <div style={S.steps}>
+          <Step num="01" title="CONNECT & FUND">
+            Sign in with your email, social account, or connect an existing wallet.
+            You'll need <Hl>USDC on Base</Hl> to play. Each round costs <Hl>1 USDC</Hl> per cell pick.
+          </Step>
+
+          <Step num="02" title="PICK YOUR CELL">
+            The grid is a <Hl>5×5 board with 25 cells</Hl>. Each round lasts <Hl>60 seconds</Hl>.
+            Click any cell to select it, then confirm to lock your pick on-chain.
+            Multiple players can pick the same cell.
+          </Step>
+
+          <Step num="03" title="ROUND RESOLVES">
+            When the timer hits zero, a <Hl>Groth16 VRF proof</Hl> is generated to select
+            the winning cell. This is cryptographically verifiable randomness — no one can
+            predict or manipulate the outcome. The proof is verified via <Hl>zkVerify</Hl>.
+          </Step>
+
+          <Step num="04" title="WINNERS GET PAID">
+            If you picked the winning cell, you <span style={{ color: "#00CC88", fontWeight: 600 }}>split the pot</span> with
+            anyone else who picked the same cell. Fewer players on your cell = bigger payout.
+            All payouts are instant and on-chain. Winners also earn <Hl>$ZERO tokens</Hl>.
+          </Step>
+
+          <Step num="05" title="NEXT ROUND STARTS">
+            A new round begins automatically. The grid resets, the timer restarts,
+            and you can pick again. Every round is independent — fresh odds, fresh grid, fresh chance.
+          </Step>
         </div>
 
-        {/* ─── STEPS ─── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {STEPS.map((step, i) => (
-            <div
-              key={i}
-              ref={(el) => (stepRefs.current[i] = el)}
-              data-step={i}
-              style={{
-                display: "flex",
-                gap: 20,
-                padding: 24,
-                borderRadius: 10,
-                border: `1px solid ${activeStep >= i ? `${step.color}33` : "rgba(255,136,0,0.06)"}`,
-                background:
-                  activeStep >= i
-                    ? `linear-gradient(135deg, ${step.color}08, transparent)`
-                    : "rgba(255,136,0,0.01)",
-                opacity: activeStep >= i ? 1 : 0.3,
-                transform: activeStep >= i ? "translateX(0)" : "translateX(-20px)",
-                transition: "all 0.6s ease",
-                alignItems: "flex-start",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              {/* Step Number */}
-              <div
-                style={{
-                  fontFamily: "'Orbitron', sans-serif",
-                  fontSize: 32,
-                  fontWeight: 900,
-                  color: `${step.color}22`,
-                  lineHeight: 1,
-                  flexShrink: 0,
-                  minWidth: 50,
-                }}
-              >
-                {step.num}
-              </div>
+        {/* Demo Grid */}
+        <div style={S.demoSection}>
+          <div style={S.demoLabel}>EXAMPLE ROUND</div>
+          <div style={S.demoGridWrap}>
+            <div style={S.cornerTL} /><div style={S.cornerTR} />
+            <div style={S.cornerBL} /><div style={S.cornerBR} />
+            <div style={S.demoGrid}>
+              {CELL_LABELS.map((label, idx) => {
+                const zone = getCellZone(idx);
+                const isWinner = idx === DEMO_WINNER;
+                const isYours = idx === DEMO_YOURS;
+                const isClaimed = DEMO_CLAIMED.has(idx);
 
-              {/* Content */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    marginBottom: 4,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>{step.icon}</span>
-                  <span
-                    style={{
-                      fontFamily: "'Orbitron', sans-serif",
-                      fontSize: 16,
-                      fontWeight: 700,
-                      color: step.color,
-                      letterSpacing: 2,
-                    }}
-                  >
-                    {step.title}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: "#5a6a7e",
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    marginBottom: 8,
-                    fontWeight: 600,
-                  }}
-                >
-                  {step.subtitle}
-                </div>
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: "#8a9bae",
-                    lineHeight: 1.7,
-                    margin: 0,
-                  }}
-                >
-                  {step.desc}
-                </p>
-              </div>
+                let zoneStyle = zone === "dark" ? S.dcDark
+                  : zone === "opening" ? S.dcOpening : S.dcLight;
 
-              {/* Interactive demo for step 3 (CLAIM) */}
-              {i === 2 && (
-                <div style={{ flexShrink: 0 }}>
-                  <AnimatedGrid />
-                </div>
-              )}
+                let stateStyle = {};
+                if (isWinner) stateStyle = S.dcWinner;
+                else if (isYours) stateStyle = S.dcYours;
+                else if (isClaimed) stateStyle = S.dcPicked;
+
+                return (
+                  <div key={idx} style={{
+                    ...S.demoCell, ...zoneStyle, ...stateStyle,
+                    animationDelay: `${idx * 0.02}s`,
+                  }}>
+                    <span style={{ fontSize: 14 }}>
+                      {isWinner ? "★" : isYours ? "◈" : isClaimed ? "◈" : "◇"}
+                    </span>
+                    <span style={{ fontSize: 8, letterSpacing: 1 }}>{label}</span>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          </div>
+
+          {/* Legend */}
+          <div style={S.legend}>
+            <LegendItem color="rgba(22,82,240,0.15)" border="rgba(22,82,240,0.2)" label="Empty" />
+            <LegendItem color="rgba(22,82,240,0.35)" border="rgba(22,82,240,0.5)" label="Claimed" />
+            <LegendItem color="rgba(22,82,240,0.5)" border="rgba(22,82,240,0.65)" label="Your Pick" glow />
+            <LegendItem color="rgba(255,215,0,0.3)" border="rgba(255,215,0,0.5)" label="Winner" />
+          </div>
         </div>
 
-        {/* ─── PAYOUT SECTION ─── */}
-        <div
-          style={{
-            marginTop: 50,
-            padding: 24,
-            borderRadius: 10,
-            border: "1px solid rgba(255,136,0,0.12)",
-            background: "rgba(255,136,0,0.02)",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: 2,
-              color: "#8a9bae",
-              marginBottom: 6,
-            }}
-          >
-            💰 PAYOUT STRUCTURE
-          </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "#5a6a7e",
-              marginBottom: 16,
-              lineHeight: 1.5,
-            }}
-          >
-            Each round's total pot is split as follows:
-          </div>
-          <PayoutBreakdown />
+        {/* Info Cards */}
+        <div style={S.infoGrid}>
+          <InfoCard icon="⬡" title="PROVABLY FAIR">
+            Every round uses a <Hl>Groth16 VRF proof</Hl> verified by <Hl>zkVerify</Hl>.
+            The winning cell is determined by cryptographic randomness that nobody can predict or tamper with.
+          </InfoCard>
+          <InfoCard icon="◈" title="FULLY ON-CHAIN">
+            All bets, payouts, and round results are recorded on <Hl>Base</Hl>.
+            No custodial risk. Your funds are in the smart contract until you win.
+            Verify everything on BaseScan.
+          </InfoCard>
+          <InfoCard icon="●" title="$ZERO REWARDS">
+            Winners earn <Hl>$ZERO tokens</Hl> on top of the USDC pot.
+            $ZERO is the native reward token — hold it, trade it, or accumulate for the Motherlode.
+          </InfoCard>
+          <InfoCard icon="↗" title="INSTANT PAYOUTS">
+            Winners receive USDC directly to their wallet within seconds of each round resolving.
+            No claiming, no delays — just on-chain settlement on Base.
+          </InfoCard>
+        </div>
 
-          {/* Motherlode callout */}
-          <div
-            style={{
-              marginTop: 20,
-              padding: 14,
-              borderRadius: 8,
-              border: "1px solid rgba(255,200,0,0.2)",
-              background:
-                "linear-gradient(135deg, rgba(255,200,0,0.06), rgba(255,136,0,0.02))",
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontSize: 28 }}>🌋</span>
-            <div>
-              <div
-                style={{
-                  fontFamily: "'Orbitron', sans-serif",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#ffc800",
-                  letterSpacing: 1.5,
-                }}
-              >
-                MOTHERLODE JACKPOT
+        {/* Special Rounds */}
+        <div style={S.specialsSection}>
+          <div style={S.specialsTitle}>SPECIAL ROUNDS</div>
+          <div style={S.specialCards}>
+            <div style={S.specialMotherlode}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>★</div>
+              <div style={{ ...S.specialName, color: "#FFD700" }}>MOTHERLODE</div>
+              <div style={{ fontSize: 11, color: "rgba(255,215,0,0.6)", marginBottom: 10 }}>
+                1 in 625 chance (~every 5 hours)
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#8a9bae",
-                  marginTop: 4,
-                  lineHeight: 1.5,
-                }}
-              >
-                Every round adds a portion to the bonus pool. Winners have a
-                1/100 chance of triggering it — triggering a 10× USDC + 10 ZERO
-                jackpot.
+              <div style={S.specialDesc}>
+                A portion of every round's $ZERO accumulates in the Motherlode pool.
+                When triggered, the winner takes the entire accumulated pool — potentially massive payouts.
+              </div>
+            </div>
+            <div style={S.specialBonus}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>⚡</div>
+              <div style={{ ...S.specialName, color: "#00CC88" }}>BONUS ROUND</div>
+              <div style={{ fontSize: 11, color: "rgba(0,204,136,0.6)", marginBottom: 10 }}>
+                ~1 per 24 hours
+              </div>
+              <div style={S.specialDesc}>
+                Randomly triggered rounds with 10× the normal $ZERO rewards.
+                Same gameplay, same cost — just amplified rewards.
               </div>
             </div>
           </div>
         </div>
 
-        {/* ─── KEY STATS ─── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: 8,
-            marginTop: 30,
-          }}
-        >
-          {[
-            { label: "ROUND TIME", value: "30s", icon: "⏱" },
-            { label: "GRID SIZE", value: "5×5", icon: "▦" },
-            { label: "ENTRY COST", value: "1 USDC", icon: "◆" },
-            { label: "ZERO SUPPLY", value: "1,000,000", icon: "🪨" },
-          ].map((stat, i) => (
-            <div
-              key={i}
-              style={{
-                padding: "16px 14px",
-                borderRadius: 8,
-                border: "1px solid rgba(255,136,0,0.1)",
-                background: "rgba(255,136,0,0.02)",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 18, marginBottom: 6 }}>{stat.icon}</div>
-              <div
-                style={{
-                  fontFamily: "'Orbitron', sans-serif",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#ff8800",
-                }}
-              >
-                {stat.value}
-              </div>
-              <div
-                style={{
-                  fontSize: 8,
-                  letterSpacing: 1.5,
-                  color: "#5a6a7e",
-                  fontWeight: 600,
-                  marginTop: 4,
-                }}
-              >
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ─── FAQ ─── */}
-        <div style={{ marginTop: 50 }}>
-          <div
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: 2,
-              color: "#8a9bae",
-              marginBottom: 16,
-            }}
-          >
-            ❓ FREQUENTLY ASKED
+        {/* CTA */}
+        <div style={S.ctaSection}>
+          <a href="/" style={S.ctaBtn}>⬡ START PLAYING</a>
+          <div style={S.ctaSub}>
+            ON-CHAIN · BASE · VRF BY ZKVERIFY
           </div>
-          <FAQ />
-        </div>
-
-        {/* ─── CTA ─── */}
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: 60,
-            padding: "30px 20px",
-            borderRadius: 12,
-            border: "1px solid rgba(255,136,0,0.2)",
-            background:
-              "linear-gradient(135deg, rgba(255,136,0,0.08), rgba(255,102,51,0.04))",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: 20,
-              fontWeight: 900,
-              color: "#ff8800",
-              letterSpacing: 3,
-              marginBottom: 10,
-            }}
-          >
-            READY TO PLAY?
-          </div>
-          <div style={{ fontSize: 12, color: "#6a7b8e", marginBottom: 20 }}>
-            Join the grid. Pick your cell. May the randomness be in your favor.
-          </div>
-          <a
-            href="/"
-            style={{
-              display: "inline-block",
-              fontFamily: "'Orbitron', sans-serif",
-              fontSize: 14,
-              fontWeight: 700,
-              padding: "14px 32px",
-              borderRadius: 8,
-              border: "1px solid #ff8800",
-              background:
-                "linear-gradient(135deg, rgba(255,136,0,0.2), rgba(255,136,0,0.05))",
-              color: "#ff8800",
-              cursor: "pointer",
-              letterSpacing: 2,
-              textDecoration: "none",
-              boxShadow: "0 0 30px rgba(255,136,0,0.15)",
-            }}
-          >
-            ⛏ ENTER THE GRID
-          </a>
         </div>
       </div>
 
-      {/* ─── FOOTER ─── */}
-      <footer
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "10px 20px",
-          borderTop: "1px solid rgba(255,136,0,0.08)",
-          background: "rgba(10,12,15,0.95)",
-          zIndex: 10,
-          position: "relative",
-        }}
-      >
-        <span style={{ fontSize: 10, color: "#3a4a5e" }}>
-          GridZero V2 — Base Mainnet
+      {/* Footer */}
+      <footer style={S.footer}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={S.footerDot} />
+          <span style={S.footerOnline}>GRID ONLINE</span>
         </span>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: "#ff8800",
-            letterSpacing: 1.5,
-            fontFamily: "'Orbitron', sans-serif",
-          }}
-        >
-          <span
-            style={{
-              display: "inline-block",
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#ff8800",
-              boxShadow: "0 0 6px #ff880088",
-              marginRight: 6,
-            }}
-          />
-          GRID ONLINE
-        </span>
+        <span style={{ fontSize: 11, color: "#4a5a6e", letterSpacing: 1 }}>ON-CHAIN · BASE · VRF BY ZKVERIFY</span>
       </footer>
 
       <style>{`
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,136,0,0.2); border-radius: 3px; }
-        @keyframes flowPulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.5); }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; background: #060A14; overflow-x: hidden; }
+        @keyframes cellAppear { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes glowBlue {
+          0%, 100% { box-shadow: 0 0 8px rgba(22,82,240,0.25); }
+          50% { box-shadow: 0 0 20px rgba(22,82,240,0.55); }
+        }
+        @keyframes winnerGlow {
+          0%, 100% { box-shadow: 0 0 10px rgba(255,215,0,0.25); }
+          50% { box-shadow: 0 0 25px rgba(255,215,0,0.55); }
+        }
+        @keyframes scanGlow {
+          0% { text-shadow: 0 0 4px #3B7BF6; }
+          50% { text-shadow: 0 0 12px #3B7BF6, 0 0 24px #3B7BF644; }
+          100% { text-shadow: 0 0 4px #3B7BF6; }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @media (max-width: 640px) {
+          .htp-info-grid { grid-template-columns: 1fr !important; }
+          .htp-special-cards { flex-direction: column !important; }
+          .htp-demo-grid { width: 260px !important; }
+          .htp-hero-title { font-size: 24px !important; letter-spacing: 2px !important; }
         }
       `}</style>
     </div>
   );
 }
+
+// ── Sub-components ──
+function Step({ num, title, children }) {
+  return (
+    <div style={S.step}>
+      <div style={S.stepNum}>{num}</div>
+      <div style={{ flex: 1 }}>
+        <div style={S.stepTitle}>{title}</div>
+        <div style={S.stepDesc}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function Hl({ children }) {
+  return <span style={{ color: "#3B7BF6", fontWeight: 600 }}>{children}</span>;
+}
+
+function InfoCard({ icon, title, children }) {
+  return (
+    <div style={S.infoCard}>
+      <div style={{ fontSize: 22, marginBottom: 10 }}>{icon}</div>
+      <div style={S.infoCardTitle}>{title}</div>
+      <div style={S.infoCardText}>{children}</div>
+    </div>
+  );
+}
+
+function LegendItem({ color, border, label, glow }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#4A5A72" }}>
+      <div style={{
+        width: 10, height: 10, borderRadius: 3,
+        background: color, border: `1px solid ${border}`,
+        ...(glow ? { boxShadow: "0 0 6px rgba(22,82,240,0.4)" } : {}),
+      }} />
+      {label}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════
+const S = {
+  root: {
+    fontFamily: "'JetBrains Mono', monospace",
+    background: "radial-gradient(ellipse at 30% 10%, #0D1A30 0%, #080E1C 40%, #060A14 100%)",
+    color: "#E0E8F4", minHeight: "100vh",
+    display: "flex", flexDirection: "column", position: "relative",
+  },
+  scanOverlay: {
+    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+    pointerEvents: "none", zIndex: 2, transition: "background 0.04s linear",
+  },
+  crtLines: {
+    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+    pointerEvents: "none", zIndex: 1,
+    background: "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px)",
+  },
+
+  // Header
+  header: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    padding: "12px 20px", borderBottom: "1px solid rgba(22,82,240,0.12)",
+    background: "rgba(8,12,22,0.95)", zIndex: 10, position: "relative",
+  },
+  hLeft: { display: "flex", alignItems: "center", gap: 10 },
+  hRight: { display: "flex", alignItems: "center", gap: 16 },
+  dot: { width: 10, height: 10, borderRadius: 3, background: "#1652F0", boxShadow: "0 0 12px rgba(22,82,240,0.6)" },
+  logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 18, color: "#3B7BF6", letterSpacing: 3 },
+  logoSub: { fontFamily: "'Orbitron', sans-serif", fontWeight: 500, fontSize: 18, color: "#E0E8F4", letterSpacing: 2 },
+  badge: {
+    fontSize: 9, padding: "3px 8px", borderRadius: 4,
+    background: "rgba(22,82,240,0.12)", color: "#3B7BF6",
+    letterSpacing: 1.5, fontWeight: 700, border: "1px solid rgba(22,82,240,0.2)",
+  },
+  backBtn: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 700,
+    padding: "8px 18px", borderRadius: 8,
+    border: "1px solid #1652F0",
+    background: "linear-gradient(135deg, rgba(22,82,240,0.2), rgba(22,82,240,0.05))",
+    color: "#3B7BF6", cursor: "pointer", letterSpacing: 1.5, textDecoration: "none",
+  },
+
+  // Content
+  content: {
+    flex: 1, maxWidth: 780, margin: "0 auto",
+    padding: "40px 28px 60px", position: "relative", zIndex: 5,
+  },
+
+  // Hero
+  hero: { textAlign: "center", marginBottom: 48 },
+  heroTag: { fontSize: 10, letterSpacing: 3, color: "#3B7BF6", marginBottom: 14, fontWeight: 700 },
+  heroTitle: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 36, fontWeight: 900,
+    letterSpacing: 4, marginBottom: 16, color: "#E0E8F4",
+  },
+  heroDesc: {
+    fontSize: 14, color: "#7A8DA6", lineHeight: 1.7,
+    maxWidth: 560, margin: "0 auto",
+  },
+
+  // Steps
+  steps: { display: "flex", flexDirection: "column", gap: 24 },
+  step: {
+    display: "flex", gap: 20, alignItems: "flex-start",
+    padding: 22, border: "1px solid rgba(22,82,240,0.12)",
+    borderRadius: 12, background: "rgba(22,82,240,0.02)",
+  },
+  stepNum: {
+    flexShrink: 0, width: 44, height: 44,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: "'Orbitron', sans-serif", fontSize: 18, fontWeight: 900,
+    color: "#3B7BF6", border: "2px solid rgba(22,82,240,0.3)",
+    borderRadius: 10, background: "linear-gradient(145deg, rgba(22,82,240,0.12), rgba(22,82,240,0.04))",
+  },
+  stepTitle: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700,
+    color: "#E0E8F4", letterSpacing: 1.5, marginBottom: 8,
+  },
+  stepDesc: { fontSize: 13, color: "#7A8DA6", lineHeight: 1.7 },
+
+  // Demo Grid
+  demoSection: { marginTop: 48, textAlign: "center" },
+  demoLabel: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700,
+    letterSpacing: 2, color: "#7A8DA6", marginBottom: 16,
+  },
+  demoGridWrap: { display: "inline-block", position: "relative", padding: 12 },
+  demoGrid: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4, width: 300 },
+  demoCell: {
+    aspectRatio: "1", borderRadius: 8,
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    gap: 2, fontSize: 9, fontWeight: 600, animation: "cellAppear 0.4s ease both",
+  },
+  cornerTL: { position: "absolute", top: 0, left: 0, width: 18, height: 18, borderLeft: "2px solid rgba(22,82,240,0.4)", borderTop: "2px solid rgba(22,82,240,0.4)" },
+  cornerTR: { position: "absolute", top: 0, right: 0, width: 18, height: 18, borderRight: "2px solid rgba(22,82,240,0.4)", borderTop: "2px solid rgba(22,82,240,0.4)" },
+  cornerBL: { position: "absolute", bottom: 0, left: 0, width: 18, height: 18, borderLeft: "2px solid rgba(22,82,240,0.4)", borderBottom: "2px solid rgba(22,82,240,0.4)" },
+  cornerBR: { position: "absolute", bottom: 0, right: 0, width: 18, height: 18, borderRight: "2px solid rgba(22,82,240,0.4)", borderBottom: "2px solid rgba(22,82,240,0.4)" },
+
+  // Cell zones
+  dcDark: {
+    background: "linear-gradient(145deg, #0E2260, #081340)",
+    border: "1px solid rgba(22,82,240,0.2)", color: "rgba(140,170,220,0.4)",
+  },
+  dcLight: {
+    background: "linear-gradient(145deg, rgba(210,225,255,0.12), rgba(180,200,240,0.06))",
+    border: "1px solid rgba(200,220,255,0.18)", color: "rgba(200,218,250,0.6)",
+  },
+  dcOpening: {
+    background: "linear-gradient(145deg, rgba(230,240,255,0.16), rgba(200,218,250,0.08))",
+    border: "1px solid rgba(220,235,255,0.22)", color: "rgba(215,232,255,0.65)",
+  },
+  dcPicked: { borderColor: "rgba(22,82,240,0.5)", color: "#3B7BF6" },
+  dcYours: {
+    borderColor: "rgba(22,82,240,0.6)", color: "#4D8EFF",
+    animation: "glowBlue 2s ease-in-out infinite",
+  },
+  dcWinner: {
+    background: "rgba(255,215,0,0.12)", borderColor: "rgba(255,215,0,0.5)",
+    color: "#FFD700", animation: "winnerGlow 1.5s ease-in-out infinite",
+  },
+
+  legend: { display: "flex", justifyContent: "center", gap: 20, marginTop: 16, flexWrap: "wrap" },
+
+  // Info Cards
+  infoGrid: {
+    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 48,
+  },
+  infoCard: {
+    border: "1px solid rgba(22,82,240,0.12)", borderRadius: 10,
+    background: "rgba(22,82,240,0.02)", padding: 20,
+  },
+  infoCardTitle: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 700,
+    letterSpacing: 1.5, color: "#E0E8F4", marginBottom: 8,
+  },
+  infoCardText: { fontSize: 12, color: "#7A8DA6", lineHeight: 1.6 },
+
+  // Specials
+  specialsSection: { marginTop: 48 },
+  specialsTitle: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700,
+    letterSpacing: 2, color: "#E0E8F4", marginBottom: 20, textAlign: "center",
+  },
+  specialCards: { display: "flex", gap: 16 },
+  specialMotherlode: {
+    flex: 1, borderRadius: 10, padding: 20, textAlign: "center",
+    border: "1px solid rgba(255,215,0,0.2)",
+    background: "linear-gradient(145deg, rgba(255,215,0,0.06), rgba(255,215,0,0.02))",
+  },
+  specialBonus: {
+    flex: 1, borderRadius: 10, padding: 20, textAlign: "center",
+    border: "1px solid rgba(0,204,136,0.2)",
+    background: "linear-gradient(145deg, rgba(0,204,136,0.06), rgba(0,204,136,0.02))",
+  },
+  specialName: { fontFamily: "'Orbitron', sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: 1.5, marginBottom: 6 },
+  specialDesc: { fontSize: 12, color: "#7A8DA6", lineHeight: 1.6 },
+
+  // CTA
+  ctaSection: { marginTop: 56, textAlign: "center" },
+  ctaBtn: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700,
+    padding: "18px 48px", borderRadius: 10, border: "none", cursor: "pointer",
+    letterSpacing: 2, background: "linear-gradient(135deg, #1652F0, #3B7BF6)",
+    color: "#fff", boxShadow: "0 4px 24px rgba(22,82,240,0.35)",
+    textTransform: "uppercase", textDecoration: "none", display: "inline-block",
+  },
+  ctaSub: { fontSize: 11, color: "#4A5A72", marginTop: 12, letterSpacing: 1.5 },
+
+  // Footer
+  footer: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    padding: "10px 20px", borderTop: "1px solid rgba(22,82,240,0.12)",
+    background: "rgba(8,12,22,0.95)", zIndex: 10, position: "relative",
+  },
+  footerDot: {
+    display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+    background: "#1652F0", boxShadow: "0 0 8px rgba(22,82,240,0.6)",
+  },
+  footerOnline: {
+    fontSize: 12, fontWeight: 700, color: "#3B7BF6", letterSpacing: 1.5,
+    animation: "scanGlow 3s ease-in-out infinite",
+  },
+};

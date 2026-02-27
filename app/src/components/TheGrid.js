@@ -78,7 +78,6 @@ const TOKEN_ADDR = "0x5E9335199d98402897fA5d3A5F21572280cdCDD0";
 const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const CELL_COST = "1";  // 1 USDC
 const CELL_COST_RAW = 1000000n; // 1 USDC in 6 decimals
-const RESOLVER_SSE_URL = "https://extraordinary-integrity-production-0b2a.up.railway.app/events";
 const ROUND_DURATION = 60;
 const GRID_SIZE = 5;
 const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
@@ -180,27 +179,19 @@ export default function TheGrid() {
   const lastRoundRef = useRef(0);
   const resolverCalledForRound = useRef(0);
   const resolvedRef = useRef(false);
-  const pollStateRef = useRef(null);
 
   // ─── SSE: Real-time events from resolver ───
   const { connected: sseConnected } = useResolverSSE({
-    url: RESOLVER_SSE_URL,
-    onRoundResolved: useCallback(() => {
-      // Instant refresh via ref (avoids stale closure)
-      pollStateRef.current?.();
-    }, []),
-    onCellPicked: useCallback((data) => {
-      if (data.cell != null) {
-        const idx = data.cell;
-        setCellCounts(prev => {
-          const next = [...prev];
-          next[idx] = (next[idx] || 0) + 1;
-          return next;
-        });
-        setClaimedCells(prev => new Set([...prev, idx]));
-        setActivePlayers(prev => prev + 1);
-      }
-    }, []),
+    url: "https://extraordinary-integrity-production-0b2a.up.railway.app/events",
+    onRoundResolved: () => pollState(),
+    onCellPicked: (data) => {
+      setCellCounts(prev => {
+        const next = [...prev];
+        next[data.cell] = (next[data.cell] || 0) + 1;
+        return next;
+      });
+      setClaimedCells(prev => new Set([...prev, data.cell]));
+    },
   });
 
   // ─── Lock body scroll when mobile sidebar is open ───
@@ -379,16 +370,14 @@ export default function TheGrid() {
     }
   }, [address, roundEnd]);
 
-  // Keep ref updated so SSE callback can trigger instant refresh
-  useEffect(() => { pollStateRef.current = pollState; }, [pollState]);
-
   useEffect(() => {
     pollState();
     const tick = () => {
       pollState();
-      // Always fast-poll during resolution window (SSE may drop)
+      // Fast poll (500ms) while waiting for resolution, normal (3s) otherwise
+      // When SSE connected, slow to 10s as safety net
       const resolving = roundEnd > 0 && Date.now() / 1000 > roundEnd && !resolvedRef.current;
-      const interval = resolving ? 500 : (sseConnected ? 5000 : 3000);
+      const interval = sseConnected ? 10000 : (resolving ? 500 : 3000);
       pollRef.current = setTimeout(tick, interval);
     };
     pollRef.current = setTimeout(tick, 3000);
@@ -553,7 +542,7 @@ export default function TheGrid() {
               return [result, ...prev];
             });
             if (isResolved && players > 0) { // V3: cell 0 is valid
-              addFeed(`🎯 Round ${prevRound} winner: Cell ${CELL_LABELS[cell] || cell}`);
+              addFeed(`★ Round ${prevRound} winner: Cell ${CELL_LABELS[cell] || cell}`);
               setMoneyFlow(true);
               setTimeout(() => setMoneyFlow(false), 2500);
             } else if (players > 0 && !isResolved) {
@@ -672,7 +661,7 @@ export default function TheGrid() {
         gas: 300000n,
       });
 
-      addFeed(`⛏ Claiming cell ${CELL_LABELS[cellIndex]}...`);
+      addFeed(`◈ Claiming cell ${CELL_LABELS[cellIndex]}...`);
       await publicClient.waitForTransactionReceipt({ hash });
       addFeed(`✓ Cell ${CELL_LABELS[cellIndex]} claimed!`);
       setPlayerCell(cellIndex);
@@ -743,7 +732,7 @@ export default function TheGrid() {
   // ─── Derived UI State ───
   const actualDuration = (roundEnd > 0 && roundStart > 0) ? (roundEnd - roundStart) : ROUND_DURATION;
   const timerProgress = actualDuration > 0 ? smoothTime / actualDuration : 0;
-  const timerColor = smoothTime > 10 ? "#ff8800" : smoothTime > 5 ? "#ffaa00" : "#ff3355";
+  const timerColor = smoothTime > 10 ? "#3B7BF6" : smoothTime > 5 ? "#4D8EFF" : "#ff3355";
 
   const getStatus = () => {
     if (!ready) return "INITIALIZING...";
@@ -761,6 +750,20 @@ export default function TheGrid() {
     return "empty";
   };
 
+  // Base logo grid pattern: outer=dark, inner=light, middle-row-left=opening
+  // 🟦🟦🟦🟦🟦  Row A (0-4)   — all dark
+  // 🟦⬜⬜⬜🟦  Row B (5-9)   — dark|light|light|light|dark
+  // ⬜⬜⬜⬜🟦  Row C (10-14) — opening×4|dark
+  // 🟦⬜⬜⬜🟦  Row D (15-19) — dark|light|light|light|dark
+  // 🟦🟦🟦🟦🟦  Row E (20-24) — all dark
+  const DARK_CELLS = new Set([0,1,2,3,4, 5,9, 14, 15,19, 20,21,22,23,24]);
+  const OPENING_CELLS = new Set([10,11,12,13]);
+  const getCellZone = (idx) => {
+    if (DARK_CELLS.has(idx)) return "dark";
+    if (OPENING_CELLS.has(idx)) return "opening";
+    return "light";
+  };
+
   const canClaim = (idx) => {
     return !resolved && smoothTime > 0 && authenticated && playerCell < 0 && usdcApproved;
   };
@@ -775,9 +778,9 @@ export default function TheGrid() {
         ...S.scanOverlay,
         background: `linear-gradient(180deg,
           transparent ${scanLine - 2}%,
-          rgba(255,136,0,0.12) ${scanLine - 1}%,
-          rgba(255,136,0,0.35) ${scanLine}%,
-          rgba(255,136,0,0.12) ${scanLine + 1}%,
+          rgba(22,82,240,0.12) ${scanLine - 1}%,
+          rgba(22,82,240,0.35) ${scanLine}%,
+          rgba(22,82,240,0.12) ${scanLine + 1}%,
           transparent ${scanLine + 2}%)`,
       }} />
       <div style={S.crtLines} />
@@ -786,10 +789,10 @@ export default function TheGrid() {
       <header style={S.header} className="grid-header">
         <div style={S.hLeft}>
           <span style={S.dot} />
-          <span style={S.logo}>THE</span>
-          <span style={S.logoSub}>GRID</span>
-          <span style={S.badge}>MAINNET</span>
-          <a href="/how-to-play" className="grid-header-stat" style={{ ...S.badge, textDecoration: "none", cursor: "pointer", background: "rgba(255,136,0,0.06)", border: "1px solid rgba(255,136,0,0.15)" }}>? HOW TO PLAY</a>
+          <span style={S.logo}>GRID</span>
+          <span style={S.logoSub}>ZERO</span>
+          <span style={S.badge}>BASE · MAINNET</span>
+          <a href="/how-to-play" className="grid-header-stat" style={{ ...S.badge, textDecoration: "none", cursor: "pointer", background: "rgba(22,82,240,0.06)", border: "1px solid rgba(22,82,240,0.15)" }}>? HOW TO PLAY</a>
         </div>
         <div style={{ ...S.hRight, gap: 10 }}>
           <span style={S.hStat} className="grid-header-stat">
@@ -798,10 +801,10 @@ export default function TheGrid() {
           {authenticated && (
             <>
               <span style={S.hStat} className="grid-header-stat">
-                ● {fmtEth(gridBalance, 2)} <b style={{ color: "#ff6633" }}>ZERO</b>
+                ● {fmtEth(gridBalance, 2)} <b style={{ color: "#1652F0" }}>ZERO</b>
               </span>
               <span style={S.hStat} className="grid-header-stat">
-                ◆ {fmt(ethBalance, 2)} <b style={{ color: "#ff8800" }}>USDC</b>
+                ◆ {fmt(ethBalance, 2)} <b style={{ color: "#3B7BF6" }}>USDC</b>
               </span>
             </>
           )}
@@ -811,9 +814,9 @@ export default function TheGrid() {
               display: "none", alignItems: "center", gap: 8,
               fontSize: 11, letterSpacing: 0.5,
             }}>
-              <span style={{ color: "#ff8800" }}>{fmt(ethBalance, 2)} <b>USDC</b></span>
+              <span style={{ color: "#3B7BF6" }}>{fmt(ethBalance, 2)} <b>USDC</b></span>
               <span style={{ color: "#4a5a6e" }}>|</span>
-              <span style={{ color: "#ff6633" }}>{fmtEth(gridBalance, 2)} <b>ZERO</b></span>
+              <span style={{ color: "#1652F0" }}>{fmtEth(gridBalance, 2)} <b>ZERO</b></span>
             </span>
           )}
           {!authenticated ? (
@@ -830,8 +833,8 @@ export default function TheGrid() {
               {walletDropdown && walletView === "menu" && (
                 <div className="grid-wallet-dropdown" style={{
                   position: "absolute", top: "calc(100% + 6px)", right: 0,
-                  width: 210, background: "#0e1218",
-                  border: "1px solid rgba(255,136,0,0.25)", borderRadius: 8,
+                  width: 210, background: "#0C1220",
+                  border: "1px solid rgba(22,82,240,0.25)", borderRadius: 8,
                   overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                   zIndex: 9999, animation: "dropIn 0.15s ease-out",
                 }}>
@@ -855,17 +858,17 @@ export default function TheGrid() {
               {walletDropdown && walletView === "withdraw" && (
                 <div className="grid-wallet-dropdown" style={{
                   position: "absolute", top: "calc(100% + 6px)", right: 0,
-                  width: 300, background: "#0e1218",
-                  border: "1px solid rgba(255,136,0,0.25)", borderRadius: 8,
+                  width: 300, background: "#0C1220",
+                  border: "1px solid rgba(22,82,240,0.25)", borderRadius: 8,
                   overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                   zIndex: 9999, animation: "dropIn 0.15s ease-out",
                 }}>
                   <div style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "12px 14px", borderBottom: "1px solid rgba(255,136,0,0.12)",
-                    background: "rgba(255,136,0,0.04)",
+                    padding: "12px 14px", borderBottom: "1px solid rgba(22,82,240,0.12)",
+                    background: "rgba(22,82,240,0.04)",
                   }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#ff8800", letterSpacing: 1.5 }}>↗ WITHDRAW USDC</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#3B7BF6", letterSpacing: 1.5 }}>↗ WITHDRAW USDC</span>
                     <button onClick={() => setWalletView("menu")} style={{
                       fontSize: 10, color: "#6a7b8e", cursor: "pointer", background: "none",
                       border: "1px solid rgba(255,255,255,0.1)", padding: "4px 10px", borderRadius: 4,
@@ -875,7 +878,7 @@ export default function TheGrid() {
                   <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, padding: "0 2px" }}>
                       <span style={{ color: "#4a5a6e" }}>Available</span>
-                      <span style={{ color: "#ff8800", fontWeight: 600, cursor: "pointer" }} onClick={() => setWithdrawAmt(fmt(ethBalance, 6))}>{fmt(ethBalance)} USDC (MAX)</span>
+                      <span style={{ color: "#3B7BF6", fontWeight: 600, cursor: "pointer" }} onClick={() => setWithdrawAmt(fmt(ethBalance, 6))}>{fmt(ethBalance)} USDC (MAX)</span>
                     </div>
                     <input
                       placeholder="Destination address (0x...)"
@@ -913,9 +916,9 @@ export default function TheGrid() {
             ...S.menuBtn,
             display: "none", alignItems: "center", justifyContent: "center",
             width: 44, height: 44, fontSize: 20,
-            border: "1px solid rgba(255,136,0,0.3)",
-            background: "rgba(255,136,0,0.06)",
-            color: "#ff8800",
+            border: "1px solid rgba(22,82,240,0.3)",
+            background: "rgba(22,82,240,0.06)",
+            color: "#3B7BF6",
             WebkitTapHighlightColor: "transparent",
           }} className="grid-menu-btn" onClick={() => { setMobileMenu(!mobileMenu); setWalletDropdown(false); }}>☰</button>
         </div>
@@ -961,22 +964,26 @@ export default function TheGrid() {
             <div style={S.grid}>
               {CELL_LABELS.map((label, idx) => {
                 const state = getCellState(idx);
+                const zone = getCellZone(idx);
                 const isSelected = selectedCell === idx;
                 const isWinnerCell = resolved && winningCell === idx;
+                const zoneStyle = zone === "dark" ? S.cellDark
+                  : zone === "opening" ? S.cellOpening : S.cellLight;
+                const hoverZone = zone === "dark" ? S.cellDarkHover
+                  : zone === "opening" ? S.cellOpeningHover : S.cellLightHover;
                 return (
                   <button
                     key={idx}
                     style={{
                       ...S.cell,
+                      ...zoneStyle,
                       ...(state === "winner" ? S.cellWinner : {}),
                       ...(state === "yours" ? S.cellYours : {}),
                       ...(state === "claimed" ? S.cellClaimed : {}),
                       ...(isSelected ? S.cellSelected : {}),
                       ...(hoveredCell === idx && state === "empty" ? {
+                        ...hoverZone,
                         transform: "translateY(-3px) scale(1.03)",
-                        boxShadow: "0 6px 16px rgba(255,136,0,0.15)",
-                        borderColor: "rgba(255,136,0,0.35)",
-                        background: "rgba(255,136,0,0.06)",
                       } : {}),
                       transition: "all 0.15s ease",
                       animationDelay: isWinnerCell ? "0s" : `${Math.floor(idx / GRID_SIZE) * 0.08}s`,
@@ -1000,10 +1007,10 @@ export default function TheGrid() {
                     onDoubleClick={() => { if (canClaim(idx) && !claiming) claimCell(idx); }}
                   >
                     <span style={S.cellLabel}>{label}</span>
-                    {state === "winner" && <span style={{ ...S.cellIcon, animation: "winnerPop 0.6s ease-out" }}>🎯</span>}
-                    {state === "yours" && <span style={S.cellIcon}>⛏</span>}
-                    {state === "claimed" && state !== "yours" && <span style={S.cellIcon}>{cellCounts[idx] > 1 ? `${cellCounts[idx]}×` : "●"}</span>}
-                    {state === "empty" && <span style={{ fontSize: 9, opacity: 0.3 }}></span>}
+                    {state === "winner" && <span style={{ ...S.cellIcon, animation: "winnerPop 0.6s ease-out" }}>★</span>}
+                    {state === "yours" && <span style={S.cellIcon}>◈</span>}
+                    {state === "claimed" && state !== "yours" && <span style={S.cellIcon}>{cellCounts[idx] > 1 ? `${cellCounts[idx]}×` : "◈"}</span>}
+                    {state === "empty" && <span style={{ fontSize: 14, opacity: 0.25 }}>◇</span>}
                   </button>
                 );
               })}
@@ -1016,19 +1023,19 @@ export default function TheGrid() {
             <span style={{ color: "#7a8b9e" }}>{activePlayers} PLAYERS</span>
           </div>
 
-          {/* Miner dots */}
+          {/* Player dots */}
           <div style={S.dots}>
             {Array.from({ length: TOTAL_CELLS }).map((_, i) => (
               <div key={i} style={{
                 ...S.progressDot,
-                backgroundColor: i < activePlayers ? "#ff8800" : "rgba(255,255,255,0.08)",
+                backgroundColor: i < activePlayers ? "#1652F0" : "rgba(22,82,240,0.1)",
               }} />
             ))}
           </div>
 
           {/* Approve USDC — one-time, shows when connected but not approved */}
           {authenticated && allowanceChecked && !usdcApproved && !approving && (
-            <button style={{ ...S.claimBtn, maxWidth: 520, marginTop: 12, background: "linear-gradient(135deg, #ff8800, #ff6600)" }} onClick={approveUsdc}>
+            <button style={{ ...S.claimBtn, maxWidth: 520, marginTop: 12, background: "linear-gradient(135deg, #3B7BF6, #1652F0)" }} onClick={approveUsdc}>
               🔓 APPROVE USDC TO PLAY (ONE-TIME)
             </button>
           )}
@@ -1051,7 +1058,7 @@ export default function TheGrid() {
           {/* Claim button — below grid */}
           {selectedCell !== null && !claiming && authenticated && usdcApproved && (
             <button style={{ ...S.claimBtn, maxWidth: 520, marginTop: 12 }} onClick={() => claimCell(selectedCell)}>
-              ⛏ CLAIM CELL {CELL_LABELS[selectedCell]} — {CELL_COST} USDC
+              ⬡ LOCK CELL {CELL_LABELS[selectedCell]} — {CELL_COST} USDC
             </button>
           )}
           {claiming && (
@@ -1063,15 +1070,15 @@ export default function TheGrid() {
             <div className="grid-mobile-user-history" style={{
               width: "100%", maxWidth: 520, marginTop: 14,
               borderRadius: 10,
-              border: "1px solid rgba(255,136,0,0.2)",
-              background: "rgba(255,136,0,0.03)",
+              border: "1px solid rgba(22,82,240,0.2)",
+              background: "rgba(22,82,240,0.03)",
               overflow: "hidden",
             }}>
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "10px 16px",
-                borderBottom: "1px solid rgba(255,136,0,0.1)",
-                background: "rgba(255,136,0,0.04)",
+                borderBottom: "1px solid rgba(22,82,240,0.1)",
+                background: "rgba(22,82,240,0.04)",
               }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#8a9bae" }}>YOUR HISTORY</span>
                 <span style={{ fontSize: 10, color: "#5a6a7e", letterSpacing: 1 }}>
@@ -1122,8 +1129,8 @@ export default function TheGrid() {
               {userHistory.length > 0 && userHistoryOffset.current < userHistoryTotal.current && (
                 <div style={{
                   padding: "8px 16px", textAlign: "center",
-                  borderTop: "1px solid rgba(255,136,0,0.1)",
-                  background: "rgba(255,136,0,0.02)",
+                  borderTop: "1px solid rgba(22,82,240,0.1)",
+                  background: "rgba(22,82,240,0.02)",
                 }}>
                   <button
                     onClick={() => {
@@ -1139,8 +1146,8 @@ export default function TheGrid() {
                     }}
                     style={{
                       width: "100%", padding: "6px 0",
-                      background: "none", border: "1px solid rgba(255,136,0,0.15)",
-                      borderRadius: 4, color: "#ff8800", fontSize: 10,
+                      background: "none", border: "1px solid rgba(22,82,240,0.15)",
+                      borderRadius: 4, color: "#3B7BF6", fontSize: 10,
                       fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
                       letterSpacing: 1, cursor: "pointer",
                     }}
@@ -1163,8 +1170,8 @@ export default function TheGrid() {
             <div style={{
               width: "100%", maxWidth: 520, marginTop: 14,
               borderRadius: 10,
-              border: "1px solid rgba(255,136,0,0.2)",
-              background: "rgba(255,136,0,0.03)",
+              border: "1px solid rgba(22,82,240,0.2)",
+              background: "rgba(22,82,240,0.03)",
               overflow: "hidden",
               animation: "winnerBannerIn 0.5s ease-out",
             }}>
@@ -1172,8 +1179,8 @@ export default function TheGrid() {
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "10px 16px",
-                borderBottom: "1px solid rgba(255,136,0,0.1)",
-                background: "rgba(255,136,0,0.04)",
+                borderBottom: "1px solid rgba(22,82,240,0.1)",
+                background: "rgba(22,82,240,0.04)",
               }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#8a9bae" }}>ROUND HISTORY</span>
                 <span style={{ fontSize: 10, color: "#5a6a7e", letterSpacing: 1 }}>
@@ -1219,7 +1226,7 @@ export default function TheGrid() {
                         fontSize: 12, fontWeight: 700,
                         color: r.resolved === false ? "#ff6666" : "#ffc800", letterSpacing: 0.5,
                       }}>
-                        {r.resolved === false ? "⏳" : (CELL_LABELS[r.cell] || "?")} {globalIdx === 0 && r.resolved !== false ? "🎯" : ""}
+                        {r.resolved === false ? "⏳" : (CELL_LABELS[r.cell] || "?")} {globalIdx === 0 && r.resolved !== false ? "★" : ""}
                       </span>
                       <span style={{
                         fontFamily: "'Orbitron', sans-serif", fontSize: 11,
@@ -1227,7 +1234,7 @@ export default function TheGrid() {
                       }}>{r.players}</span>
                       <span style={{
                         fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
-                        color: isLatest ? "#ffc800" : "#ff8800",
+                        color: isLatest ? "#ffc800" : "#3B7BF6",
                         animation: isLatest ? "pulse 1s ease-in-out infinite" : "none",
                       }}>{fmt(r.pot)}</span>
                       <span style={{ textAlign: "right" }}>
@@ -1236,7 +1243,7 @@ export default function TheGrid() {
                             href={`${EXPLORER}/tx/${r.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ fontSize: 10, color: "#ff8800", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace" }}
+                            style={{ fontSize: 10, color: "#3B7BF6", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace" }}
                           >
                             {r.txHash.slice(0, 6)}…{r.txHash.slice(-4)} ↗
                           </a>
@@ -1259,16 +1266,16 @@ export default function TheGrid() {
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "8px 16px",
-                borderTop: "1px solid rgba(255,136,0,0.1)",
-                background: "rgba(255,136,0,0.02)",
+                borderTop: "1px solid rgba(22,82,240,0.1)",
+                background: "rgba(22,82,240,0.02)",
               }}>
                 <button
                   onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
                   disabled={!hasNewer}
                   style={{
-                    background: hasNewer ? "rgba(255,136,0,0.12)" : "transparent",
-                    border: hasNewer ? "1px solid rgba(255,136,0,0.3)" : "1px solid rgba(255,255,255,0.06)",
-                    color: hasNewer ? "#ff8800" : "#3a4a5e",
+                    background: hasNewer ? "rgba(22,82,240,0.12)" : "transparent",
+                    border: hasNewer ? "1px solid rgba(22,82,240,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                    color: hasNewer ? "#3B7BF6" : "#3a4a5e",
                     padding: "4px 14px", borderRadius: 6, fontSize: 10, fontWeight: 700,
                     letterSpacing: 1.5, cursor: hasNewer ? "pointer" : "default",
                     fontFamily: "'JetBrains Mono', monospace",
@@ -1289,9 +1296,9 @@ export default function TheGrid() {
                   }}
                   disabled={!hasOlder || historyLoading}
                   style={{
-                    background: hasOlder ? "rgba(255,136,0,0.12)" : "transparent",
-                    border: hasOlder ? "1px solid rgba(255,136,0,0.3)" : "1px solid rgba(255,255,255,0.06)",
-                    color: hasOlder ? "#ff8800" : "#3a4a5e",
+                    background: hasOlder ? "rgba(22,82,240,0.12)" : "transparent",
+                    border: hasOlder ? "1px solid rgba(22,82,240,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                    color: hasOlder ? "#3B7BF6" : "#3a4a5e",
                     padding: "4px 14px", borderRadius: 6, fontSize: 10, fontWeight: 700,
                     letterSpacing: 1.5, cursor: hasOlder ? "pointer" : "default",
                     fontFamily: "'JetBrains Mono', monospace",
@@ -1312,14 +1319,14 @@ export default function TheGrid() {
         <div style={S.sidebar} className={`grid-sidebar ${mobileMenu ? "open" : ""}`}>
           {/* Mobile sticky header */}
           <div className="grid-sidebar-header">
-            <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 2, color: "#ff8800" }}>
-              ● THE<span style={{ color: "#e0e8f0" }}>GRID</span>
+            <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 2, color: "#3B7BF6" }}>
+              ● GRID<span style={{ color: "#e0e8f0" }}>ZERO</span>
             </span>
             <button
               onClick={() => setMobileMenu(false)}
               style={{
-                background: "rgba(255,136,0,0.1)", border: "1px solid rgba(255,136,0,0.3)",
-                color: "#ff8800", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                background: "rgba(22,82,240,0.1)", border: "1px solid rgba(22,82,240,0.3)",
+                color: "#3B7BF6", fontSize: 13, fontWeight: 700, cursor: "pointer",
                 padding: "10px 18px", borderRadius: 6, fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: 1, minHeight: 44, minWidth: 44,
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -1332,8 +1339,8 @@ export default function TheGrid() {
           {/* Login prompt */}
           {!authenticated && (
             <div style={S.loginPrompt}>
-              <div style={S.loginPromptTitle}>⚡ ENTER THE GRID</div>
-              <div style={S.loginPromptText}>Login with email or Google to get an instant wallet and start mining.</div>
+              <div style={S.loginPromptTitle}>⬡ ENTER GRID ZERO</div>
+              <div style={S.loginPromptText}>Login with email or Google to get an instant wallet and start playing.</div>
               <button style={S.claimBtn} onClick={login}>LOGIN TO PLAY</button>
             </div>
           )}
@@ -1355,11 +1362,11 @@ export default function TheGrid() {
               <div style={{ padding: "6px 0" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
                   <span style={{ color: "#6a7b8e", letterSpacing: 0.5 }}>WALLET</span>
-                  <button onClick={copyAddress} style={{ background: "none", border: "none", color: copied ? "#00cc88" : "#ff8800", cursor: "pointer", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
+                  <button onClick={copyAddress} style={{ background: "none", border: "none", color: copied ? "#00cc88" : "#3B7BF6", cursor: "pointer", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
                     {copied ? "✓ COPIED" : "📋 COPY"}
                   </button>
                 </div>
-                <div style={{ fontSize: 10, color: "#8a9bae", wordBreak: "break-all", marginTop: 4, padding: "6px 8px", background: "rgba(255,136,0,0.04)", borderRadius: 4, border: "1px solid rgba(255,136,0,0.08)", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 10, color: "#8a9bae", wordBreak: "break-all", marginTop: 4, padding: "6px 8px", background: "rgba(22,82,240,0.04)", borderRadius: 4, border: "1px solid rgba(22,82,240,0.08)", lineHeight: 1.6 }}>
                   {address || "—"}
                 </div>
                 <div style={{ fontSize: 9, color: "#4a5a6e", marginTop: 4 }}>Send USDC on Base to this address to fund your wallet</div>
@@ -1427,8 +1434,8 @@ export default function TheGrid() {
                     }}
                     style={{
                       width: "100%", padding: "8px 0", marginTop: 6,
-                      background: "none", border: "1px solid rgba(255,136,0,0.15)",
-                      borderRadius: 4, color: "#ff8800", fontSize: 10,
+                      background: "none", border: "1px solid rgba(22,82,240,0.15)",
+                      borderRadius: 4, color: "#3B7BF6", fontSize: 10,
                       fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
                       letterSpacing: 1, cursor: "pointer",
                     }}
@@ -1480,18 +1487,18 @@ export default function TheGrid() {
           <span style={S.greenDot} />
           <span style={S.gridOnline}>GRID ONLINE</span>
         </span>
-        <span style={{ fontSize: 11, color: "#4a5a6e", letterSpacing: 1 }}>GRIDZERO.COM ◆ BASE ◆ CHAIN 8453</span>
+        <span style={{ fontSize: 11, color: "#4a5a6e", letterSpacing: 1 }}>ON-CHAIN · BASE · VRF BY ZKVERIFY</span>
       </footer>
 
       {/* ─── CSS ─── */}
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { margin: 0; padding: 0; background: #0a0c0f; overflow-x: hidden; }
+        body { margin: 0; padding: 0; background: #060A14; overflow-x: hidden; }
         @keyframes cellAppear { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes glow {
-          0%, 100% { box-shadow: 0 0 8px rgba(255,136,0,0.3), inset 0 0 8px rgba(255,136,0,0.1); }
-          50% { box-shadow: 0 0 20px rgba(255,136,0,0.6), inset 0 0 15px rgba(255,136,0,0.2); }
+          0%, 100% { box-shadow: 0 0 8px rgba(22,82,240,0.3), inset 0 0 8px rgba(22,82,240,0.1); }
+          50% { box-shadow: 0 0 20px rgba(22,82,240,0.6), inset 0 0 15px rgba(22,82,240,0.2); }
         }
         @keyframes winnerGlow {
           0%, 100% { box-shadow: 0 0 10px rgba(255,200,0,0.4), inset 0 0 10px rgba(255,200,0,0.1); }
@@ -1513,7 +1520,7 @@ export default function TheGrid() {
           100% { transform: scale(1); opacity: 1; }
         }
         @keyframes gridResetFlash {
-          0% { background: rgba(255,136,0,0.25); }
+          0% { background: rgba(22,82,240,0.25); }
           100% { background: transparent; }
         }
         @keyframes particleFlow {
@@ -1527,17 +1534,17 @@ export default function TheGrid() {
           100% { opacity: 1; transform: translateY(0); }
         }
         @keyframes scanGlow {
-          0% { text-shadow: 0 0 4px #ff8800; }
-          50% { text-shadow: 0 0 12px #ff8800, 0 0 24px #ff880044; }
-          100% { text-shadow: 0 0 4px #ff8800; }
+          0% { text-shadow: 0 0 4px #3B7BF6; }
+          50% { text-shadow: 0 0 12px #3B7BF6, 0 0 24px #3B7BF644; }
+          100% { text-shadow: 0 0 4px #3B7BF6; }
         }
         @keyframes dropIn {
           from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .grid-user-history-scroll::-webkit-scrollbar { width: 4px; }
-        .grid-user-history-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
-        .grid-user-history-scroll::-webkit-scrollbar-thumb { background: rgba(255,136,0,0.25); border-radius: 2px; }
+        .grid-user-history-scroll::-webkit-scrollbar-track { background: rgba(22,82,240,0.04); }
+        .grid-user-history-scroll::-webkit-scrollbar-thumb { background: rgba(22,82,240,0.25); border-radius: 2px; }
         @media (max-width: 768px) {
           .grid-wallet-dropdown { width: calc(100vw - 32px) !important; max-width: 300px !important; right: -10px !important; }
         }
@@ -1559,8 +1566,8 @@ export default function TheGrid() {
             z-index: 9999 !important;
             overflow-y: auto !important; overflow-x: hidden !important;
             -webkit-overflow-scrolling: touch !important;
-            background: #0a0e14 !important;
-            border-left: 1px solid rgba(255,136,0,0.25) !important;
+            background: #0A0E18 !important;
+            border-left: 1px solid rgba(22,82,240,0.25) !important;
             padding: 0 16px 16px !important;
             padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
             transform: translateX(100%) !important;
@@ -1575,11 +1582,11 @@ export default function TheGrid() {
           }
           .grid-sidebar-header {
             position: sticky !important; top: 0 !important; z-index: 10 !important;
-            background: #0a0e14 !important;
+            background: #0A0E18 !important;
             padding: 16px 0 12px !important;
             margin: 0 -16px !important; padding-left: 16px !important; padding-right: 16px !important;
             padding-top: calc(16px + env(safe-area-inset-top, 0px)) !important;
-            border-bottom: 1px solid rgba(255,136,0,0.15) !important;
+            border-bottom: 1px solid rgba(22,82,240,0.15) !important;
             display: flex !important; justify-content: space-between !important; align-items: center !important;
           }
           .grid-game-area {
@@ -1626,7 +1633,7 @@ function Row({ label, value, hl }) {
   return (
     <div style={S.row}>
       <span style={S.rowLabel}>{label}</span>
-      <span style={{ ...S.rowValue, ...(hl ? { color: "#ff8800" } : {}) }}>{value}</span>
+      <span style={{ ...S.rowValue, ...(hl ? { color: "#3B7BF6" } : {}) }}>{value}</span>
     </div>
   );
 }
@@ -1637,7 +1644,7 @@ function Row({ label, value, hl }) {
 const S = {
   root: {
     fontFamily: "'JetBrains Mono', monospace",
-    background: "radial-gradient(ellipse at 30% 20%, #0f1923 0%, #0a0c0f 50%, #080a0d 100%)",
+    background: "radial-gradient(ellipse at 30% 20%, #0D1A30 0%, #080E1C 50%, #060A14 100%)",
     color: "#c8d6e5", minHeight: "100vh",
     display: "flex", flexDirection: "column",
     position: "relative",
@@ -1653,23 +1660,23 @@ const S = {
   },
   header: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "12px 20px", borderBottom: "1px solid rgba(255,136,0,0.12)",
-    background: "rgba(10,12,15,0.95)", zIndex: 10, position: "relative",
+    padding: "12px 20px", borderBottom: "1px solid rgba(22,82,240,0.12)",
+    background: "rgba(8,12,22,0.95)", zIndex: 10, position: "relative",
     flexWrap: "wrap", gap: 8,
   },
   hLeft: { display: "flex", alignItems: "center", gap: 8 },
   hRight: { display: "flex", alignItems: "center", gap: 16 },
-  dot: { width: 8, height: 8, borderRadius: "50%", background: "#ff6633", boxShadow: "0 0 8px #ff663388" },
-  logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 18, color: "#ff6633", letterSpacing: 2 },
+  dot: { width: 10, height: 10, borderRadius: 3, background: "#1652F0", boxShadow: "0 0 12px rgba(22,82,240,0.6)" },
+  logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 18, color: "#3B7BF6", letterSpacing: 3 },
   logoSub: { fontFamily: "'Orbitron', sans-serif", fontWeight: 500, fontSize: 18, color: "#e0e8f0", letterSpacing: 2 },
-  badge: { fontSize: 9, padding: "2px 6px", borderRadius: 3, background: "rgba(255,136,0,0.12)", color: "#ff8800", letterSpacing: 1.5, fontWeight: 600 },
+  badge: { fontSize: 9, padding: "2px 6px", borderRadius: 3, background: "rgba(22,82,240,0.12)", color: "#3B7BF6", letterSpacing: 1.5, fontWeight: 600 },
   hStat: { fontSize: 12, color: "#7a8b9e", letterSpacing: 0.5 },
   loginBtn: {
     fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 700,
     padding: "8px 16px", borderRadius: 6,
-    border: "1px solid #ff8800",
-    background: "linear-gradient(135deg, rgba(255,136,0,0.15), rgba(255,136,0,0.05))",
-    color: "#ff8800", cursor: "pointer", letterSpacing: 1.5,
+    border: "1px solid #1652F0",
+    background: "linear-gradient(135deg, rgba(22,82,240,0.2), rgba(22,82,240,0.05))",
+    color: "#3B7BF6", cursor: "pointer", letterSpacing: 1.5,
   },
   menuBtn: { fontSize: 20, background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "#c8d6e5", borderRadius: 6, padding: "4px 10px", cursor: "pointer" },
   main: { display: "flex", flex: 1, gap: 0, position: "relative", zIndex: 5 },
@@ -1680,65 +1687,103 @@ const S = {
   timerNum: { fontFamily: "'Orbitron', sans-serif", fontSize: 20, fontWeight: 700, transition: "color 0.5s ease" },
   timerMs: { fontSize: 14, opacity: 0.7 },
   gridOuter: { position: "relative", width: "100%", maxWidth: 520, padding: 12 },
-  cornerTL: { position: "absolute", top: 0, left: 0, width: 20, height: 20, borderLeft: "2px solid rgba(255,136,0,0.4)", borderTop: "2px solid rgba(255,136,0,0.4)" },
-  cornerTR: { position: "absolute", top: 0, right: 0, width: 20, height: 20, borderRight: "2px solid rgba(255,136,0,0.4)", borderTop: "2px solid rgba(255,136,0,0.4)" },
-  cornerBL: { position: "absolute", bottom: 0, left: 0, width: 20, height: 20, borderLeft: "2px solid rgba(255,136,0,0.4)", borderBottom: "2px solid rgba(255,136,0,0.4)" },
-  cornerBR: { position: "absolute", bottom: 0, right: 0, width: 20, height: 20, borderRight: "2px solid rgba(255,136,0,0.4)", borderBottom: "2px solid rgba(255,136,0,0.4)" },
+  cornerTL: { position: "absolute", top: 0, left: 0, width: 20, height: 20, borderLeft: "2px solid rgba(22,82,240,0.4)", borderTop: "2px solid rgba(22,82,240,0.4)" },
+  cornerTR: { position: "absolute", top: 0, right: 0, width: 20, height: 20, borderRight: "2px solid rgba(22,82,240,0.4)", borderTop: "2px solid rgba(22,82,240,0.4)" },
+  cornerBL: { position: "absolute", bottom: 0, left: 0, width: 20, height: 20, borderLeft: "2px solid rgba(22,82,240,0.4)", borderBottom: "2px solid rgba(22,82,240,0.4)" },
+  cornerBR: { position: "absolute", bottom: 0, right: 0, width: 20, height: 20, borderRight: "2px solid rgba(22,82,240,0.4)", borderBottom: "2px solid rgba(22,82,240,0.4)" },
   grid: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, width: "100%" },
   cell: {
     fontFamily: "'JetBrains Mono', monospace", position: "relative",
     aspectRatio: "1", minHeight: 64,
-    border: "1px solid rgba(255,136,0,0.08)", borderRadius: 6,
-    background: "rgba(255,136,0,0.02)", color: "#5a7a6e",
+    borderRadius: 8,
     cursor: "pointer", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center", gap: 2,
     fontSize: 11, fontWeight: 600, transition: "all 0.15s ease",
     animation: "cellAppear 0.4s ease both",
     touchAction: "manipulation",
+    border: "none",
   },
-  cellClaimed: { background: "rgba(255,102,51,0.08)", borderColor: "rgba(255,102,51,0.3)", color: "#ff6633", cursor: "default" },
-  cellYours: { background: "rgba(255,136,0,0.1)", borderColor: "rgba(255,136,0,0.5)", color: "#ff8800", animation: "glow 2s ease-in-out infinite" },
-  cellWinner: { background: "rgba(255,200,0,0.15)", borderColor: "rgba(255,200,0,0.6)", color: "#ffc800", boxShadow: "0 0 20px rgba(255,200,0,0.4), inset 0 0 12px rgba(255,200,0,0.15)", animation: "winnerGlow 1.5s ease-in-out infinite" },
-  cellSelected: { background: "rgba(0,180,255,0.12)", borderColor: "rgba(0,180,255,0.5)", color: "#00b4ff", boxShadow: "0 0 15px rgba(0,180,255,0.3)" },
+  // ── Base logo zones ──
+  cellDark: {
+    background: "linear-gradient(145deg, #0E2260 0%, #0A1A4A 60%, #081340 100%)",
+    border: "1px solid rgba(22,82,240,0.25)",
+    color: "rgba(140,170,220,0.45)",
+    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.4), 0 0 4px rgba(22,82,240,0.06)",
+  },
+  cellLight: {
+    background: "linear-gradient(145deg, rgba(210,225,255,0.14) 0%, rgba(190,210,250,0.09) 60%, rgba(170,195,240,0.06) 100%)",
+    border: "1px solid rgba(200,220,255,0.2)",
+    color: "rgba(210,225,250,0.7)",
+    boxShadow: "inset 0 1px 5px rgba(255,255,255,0.04), 0 0 6px rgba(200,220,255,0.04)",
+  },
+  cellOpening: {
+    background: "linear-gradient(145deg, rgba(230,240,255,0.18) 0%, rgba(215,230,255,0.13) 60%, rgba(200,218,250,0.09) 100%)",
+    border: "1px solid rgba(220,235,255,0.24)",
+    color: "rgba(225,238,255,0.8)",
+    boxShadow: "inset 0 1px 6px rgba(255,255,255,0.06), 0 0 8px rgba(220,235,255,0.06)",
+  },
+  cellDarkHover: {
+    background: "linear-gradient(145deg, #122A70 0%, #0D2058 60%, #0A1848 100%)",
+    borderColor: "rgba(22,82,240,0.5)",
+    color: "rgba(200,215,250,0.8)",
+    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 0 16px rgba(22,82,240,0.2)",
+  },
+  cellLightHover: {
+    background: "linear-gradient(145deg, rgba(225,238,255,0.22) 0%, rgba(205,222,255,0.16) 60%, rgba(185,208,250,0.12) 100%)",
+    borderColor: "rgba(225,240,255,0.38)",
+    color: "rgba(240,245,255,0.95)",
+    boxShadow: "inset 0 1px 5px rgba(255,255,255,0.08), 0 0 18px rgba(200,220,255,0.1)",
+  },
+  cellOpeningHover: {
+    background: "linear-gradient(145deg, rgba(240,248,255,0.28) 0%, rgba(228,240,255,0.2) 60%, rgba(215,232,255,0.16) 100%)",
+    borderColor: "rgba(240,248,255,0.42)",
+    color: "white",
+    boxShadow: "inset 0 1px 6px rgba(255,255,255,0.12), 0 0 22px rgba(220,235,255,0.14)",
+  },
+  cellClaimed: { borderColor: "rgba(22,82,240,0.5)", color: "#3B7BF6" },
+  cellYours: { borderColor: "rgba(22,82,240,0.65)", color: "#4D8EFF", animation: "glow 2s ease-in-out infinite" },
+  cellWinner: { background: "rgba(255,215,0,0.12)", borderColor: "rgba(255,215,0,0.55)", color: "#FFD700", boxShadow: "0 0 20px rgba(255,215,0,0.4), inset 0 0 12px rgba(255,215,0,0.15)", animation: "winnerGlow 1.5s ease-in-out infinite" },
+  cellSelected: { background: "rgba(22,82,240,0.22)", borderColor: "#1652F0", color: "#fff", boxShadow: "0 0 24px rgba(22,82,240,0.4)" },
   cellLabel: { letterSpacing: 1 },
   cellIcon: { fontSize: 16 },
   statusBar: { display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 520, padding: "8px 12px", marginTop: 8, fontSize: 11, letterSpacing: 1.5, color: "#5a6a7e" },
   dots: { display: "flex", gap: 3, width: "100%", maxWidth: 520, padding: "0 12px" },
   progressDot: { flex: 1, height: 3, borderRadius: 2, transition: "background-color 0.5s ease" },
   sidebar: {
-    width: 340, minWidth: 300, borderLeft: "1px solid rgba(255,136,0,0.08)",
-    background: "rgba(10,14,20,0.98)", padding: 16,
+    width: 340, minWidth: 300, borderLeft: "1px solid rgba(22,82,240,0.08)",
+    background: "rgba(10,14,24,0.98)", padding: 16,
     display: "flex", flexDirection: "column", gap: 12,
     overflowY: "auto", maxHeight: "calc(100vh - 100px)",
   },
   closeBtn: { alignSelf: "flex-end", background: "none", border: "none", color: "#7a8b9e", fontSize: 18, cursor: "pointer", padding: "4px 8px" },
-  loginPrompt: { border: "1px solid rgba(255,136,0,0.2)", borderRadius: 8, background: "rgba(255,136,0,0.04)", padding: 16, textAlign: "center" },
-  loginPromptTitle: { fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700, color: "#ff8800", marginBottom: 8 },
+  loginPrompt: { border: "1px solid rgba(22,82,240,0.2)", borderRadius: 8, background: "rgba(22,82,240,0.04)", padding: 16, textAlign: "center" },
+  loginPromptTitle: { fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700, color: "#3B7BF6", marginBottom: 8 },
   loginPromptText: { fontSize: 12, color: "#7a8b9e", marginBottom: 12, lineHeight: 1.5 },
-  panel: { border: "1px solid rgba(255,136,0,0.1)", borderRadius: 8, background: "rgba(255,136,0,0.02)", overflow: "hidden" },
-  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#8a9bae", borderBottom: "1px solid rgba(255,136,0,0.06)" },
-  liveTag: { color: "#ff8800", fontSize: 10, letterSpacing: 1, animation: "scanGlow 2s ease-in-out infinite" },
+  panel: { border: "1px solid rgba(22,82,240,0.1)", borderRadius: 8, background: "rgba(22,82,240,0.02)", overflow: "hidden" },
+  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#8a9bae", borderBottom: "1px solid rgba(22,82,240,0.06)" },
+  liveTag: { color: "#3B7BF6", fontSize: 10, letterSpacing: 1, animation: "scanGlow 2s ease-in-out infinite" },
   row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 12 },
   rowLabel: { color: "#6a7b8e", letterSpacing: 0.5 },
   rowValue: { fontWeight: 600, color: "#d0dce8", fontFamily: "'Orbitron', sans-serif", fontSize: 13 },
   claimBtn: {
     fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700,
     padding: "14px 20px", borderRadius: 8,
-    border: "1px solid #ff8800",
-    background: "linear-gradient(135deg, rgba(255,136,0,0.15), rgba(255,136,0,0.05))",
-    color: "#ff8800", cursor: "pointer", letterSpacing: 1,
+    border: "none",
+    background: "linear-gradient(135deg, #1652F0, #3B7BF6)",
+    color: "#fff", cursor: "pointer", letterSpacing: 1,
     transition: "all 0.2s", textAlign: "center", width: "100%",
+    boxShadow: "0 4px 20px rgba(22,82,240,0.3)",
   },
-  claimingBar: { display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", borderRadius: 8, border: "1px solid rgba(255,170,0,0.3)", background: "rgba(255,170,0,0.08)", color: "#ffaa00", fontSize: 12, fontWeight: 600, letterSpacing: 1 },
-  claimingDot: { width: 8, height: 8, borderRadius: "50%", background: "#ffaa00", animation: "pulse 1s ease-in-out infinite" },
+  claimingBar: { display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", borderRadius: 8, border: "1px solid rgba(22,82,240,0.3)", background: "rgba(22,82,240,0.08)", color: "#4D8EFF", fontSize: 12, fontWeight: 600, letterSpacing: 1 },
+  claimingDot: { width: 8, height: 8, borderRadius: "50%", background: "#4D8EFF", animation: "pulse 1s ease-in-out infinite" },
   errorBox: { padding: "10px 14px", borderRadius: 6, border: "1px solid rgba(255,51,85,0.3)", background: "rgba(255,51,85,0.08)", color: "#ff3355", fontSize: 11, cursor: "pointer" },
   feedBody: { maxHeight: 200, overflowY: "auto" },
   feedEmpty: { color: "#3a4a5e", fontSize: 12, fontStyle: "italic", padding: "12px 0" },
   feedItem: { fontSize: 11, padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.03)", display: "flex", gap: 8, animation: "slideIn 0.3s ease" },
   feedTime: { color: "#3a4a5e", fontSize: 10, flexShrink: 0 },
-  footer: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 20px", borderTop: "1px solid rgba(255,136,0,0.08)", background: "rgba(10,12,15,0.95)", zIndex: 10, position: "relative" },
-  greenDot: { display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#ff8800", boxShadow: "0 0 6px #ff880088" },
-  gridOnline: { fontSize: 12, fontWeight: 700, color: "#ff8800", letterSpacing: 1.5, animation: "scanGlow 3s ease-in-out infinite" },
+  footer: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 20px", borderTop: "1px solid rgba(22,82,240,0.08)", background: "rgba(8,12,22,0.95)", zIndex: 10, position: "relative" },
+  greenDot: { display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#3B7BF6", boxShadow: "0 0 6px #3B7BF688" },
+  gridOnline: { fontSize: 12, fontWeight: 700, color: "#3B7BF6", letterSpacing: 1.5, animation: "scanGlow 3s ease-in-out infinite" },
   dropdownItem: {
     display: "flex", alignItems: "center", gap: 10,
     padding: "12px 14px", fontFamily: "'JetBrains Mono', monospace",
@@ -1752,7 +1797,7 @@ const S = {
   dropdownInput: {
     width: "100%", padding: "10px 12px", fontSize: 11,
     fontFamily: "'JetBrains Mono', monospace",
-    background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,136,0,0.15)",
+    background: "rgba(0,0,0,0.4)", border: "1px solid rgba(22,82,240,0.15)",
     borderRadius: 6, color: "#c8d6e5", outline: "none", letterSpacing: 0.3,
   },
 };
