@@ -818,7 +818,7 @@ export default function TheGrid() {
       {/* ─── HEADER ─── */}
       <header style={S.header} className="grid-header">
         <div style={S.hLeft}>
-          <span style={S.dot} />
+          <LogoIcon size={28} />
           <span style={S.logo}>GRID</span>
           <span style={S.logoSub}>ZERO</span>
           <span style={S.badge}>BASE · MAINNET</span>
@@ -1352,8 +1352,9 @@ export default function TheGrid() {
         <div style={S.sidebar} className={`grid-sidebar ${mobileMenu ? "open" : ""}`}>
           {/* Mobile sticky header */}
           <div className="grid-sidebar-header">
-            <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 2, color: "#3B7BF6" }}>
-              ● GRID<span style={{ color: "#e0e8f0" }}>ZERO</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <LogoIcon size={22} />
+              <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 2, color: "#3B7BF6" }}>GRID<span style={{ color: "#e0e8f0" }}>ZERO</span></span>
             </span>
             <button
               onClick={() => setMobileMenu(false)}
@@ -1372,7 +1373,8 @@ export default function TheGrid() {
           {/* Login prompt */}
           {!authenticated && (
             <div style={S.loginPrompt}>
-              <div style={S.loginPromptTitle}>⬡ ENTER GRID ZERO</div>
+              <LogoIcon size={56} />
+              <div style={S.loginPromptTitle}>ENTER GRID ZERO</div>
               <div style={S.loginPromptText}>Login with email or Google to get an instant wallet and start playing.</div>
               <button style={S.claimBtn} onClick={login}>LOGIN TO PLAY</button>
             </div>
@@ -1520,7 +1522,7 @@ export default function TheGrid() {
       {/* ─── FOOTER ─── */}
       <footer style={S.footer}>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={S.greenDot} />
+          <LogoIcon size={16} />
           <span style={S.gridOnline}>GRID ONLINE</span>
         </span>
         <span style={{ fontSize: 11, color: "#4a5a6e", letterSpacing: 1 }}>ON-CHAIN · BASE · VRF BY ZKVERIFY</span>
@@ -1653,6 +1655,26 @@ export default function TheGrid() {
 // ═══════════════════════════════════════════════════════════════
 // SUB-COMPONENTS
 // ═══════════════════════════════════════════════════════════════
+
+function LogoIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}>
+      <defs>
+        <linearGradient id={`lg${size}`} x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#3B7BF6" />
+          <stop offset="100%" stopColor="#1652F0" />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="4" width="72" height="72" rx="16" fill={`url(#lg${size})`} />
+      <line x1="30" y1="4" x2="30" y2="76" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <line x1="50" y1="4" x2="50" y2="76" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <line x1="4" y1="30" x2="76" y2="30" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <line x1="4" y1="50" x2="76" y2="50" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <text x="40" y="56" textAnchor="middle" fontFamily="'Orbitron', sans-serif" fontWeight="900" fontSize="48" fill="white" letterSpacing="-2">0</text>
+    </svg>
+  );
+}
+
 function Panel({ title, live, children }) {
   return (
     <div style={S.panel}>
@@ -1793,7 +1815,7 @@ const S = {
   },
   closeBtn: { alignSelf: "flex-end", background: "none", border: "none", color: "#7a8b9e", fontSize: 18, cursor: "pointer", padding: "4px 8px" },
   loginPrompt: { border: "1px solid rgba(22,82,240,0.2)", borderRadius: 8, background: "rgba(22,82,240,0.04)", padding: 16, textAlign: "center" },
-  loginPromptTitle: { fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700, color: "#3B7BF6", marginBottom: 8 },
+  loginPromptTitle: { fontFamily: "'Orbitron', sans-serif", fontSize: 16, fontWeight: 700, color: "#e0e8f0", marginTop: 14, marginBottom: 8, letterSpacing: 2 },
   loginPromptText: { fontSize: 12, color: "#7a8b9e", marginBottom: 12, lineHeight: 1.5 },
   panel: { border: "1px solid rgba(22,82,240,0.1)", borderRadius: 8, background: "rgba(22,82,240,0.02)", overflow: "hidden" },
   panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#8a9bae", borderBottom: "1px solid rgba(22,82,240,0.06)" },

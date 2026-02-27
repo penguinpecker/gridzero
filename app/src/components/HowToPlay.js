@@ -12,8 +12,8 @@ for (let r = 0; r < GRID_SIZE; r++)
     CELL_LABELS.push(`${String.fromCharCode(65 + r)}${c + 1}`);
 
 // Base logo pattern
-const DARK_CELLS = new Set([0,1,2,3,4, 5,9, 14, 15,19, 20,21,22,23,24]);
-const OPENING_CELLS = new Set([10,11,12,13]);
+const DARK_CELLS = new Set([0,1,2,3,4, 5,9, 10,14, 15,19, 20,21,22,23,24]);
+const OPENING_CELLS = new Set([11,12,13]);
 const getCellZone = (idx) => {
   if (DARK_CELLS.has(idx)) return "dark";
   if (OPENING_CELLS.has(idx)) return "opening";
@@ -24,6 +24,25 @@ const getCellZone = (idx) => {
 const DEMO_CLAIMED = new Set([1, 8, 12]);
 const DEMO_YOURS = 9; // B5
 const DEMO_WINNER = 12; // C3
+
+function HTPLogoIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}>
+      <defs>
+        <linearGradient id={`htplg${size}`} x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#3B7BF6" />
+          <stop offset="100%" stopColor="#1652F0" />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="4" width="72" height="72" rx="16" fill={`url(#htplg${size})`} />
+      <line x1="30" y1="4" x2="30" y2="76" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <line x1="50" y1="4" x2="50" y2="76" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <line x1="4" y1="30" x2="76" y2="30" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <line x1="4" y1="50" x2="76" y2="50" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+      <text x="40" y="56" textAnchor="middle" fontFamily="'Orbitron', sans-serif" fontWeight="900" fontSize="48" fill="white" letterSpacing="-2">0</text>
+    </svg>
+  );
+}
 
 export default function HowToPlay() {
   const [scanLine, setScanLine] = useState(0);
@@ -50,7 +69,7 @@ export default function HowToPlay() {
       {/* Header */}
       <header style={S.header}>
         <div style={S.hLeft}>
-          <span style={S.dot} />
+          <HTPLogoIcon size={28} />
           <span style={S.logo}>GRID</span>
           <span style={S.logoSub}>ZERO</span>
           <span style={S.badge}>HOW TO PLAY</span>
@@ -210,7 +229,7 @@ export default function HowToPlay() {
       {/* Footer */}
       <footer style={S.footer}>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={S.footerDot} />
+          <HTPLogoIcon size={16} />
           <span style={S.footerOnline}>GRID ONLINE</span>
         </span>
         <span style={{ fontSize: 11, color: "#4a5a6e", letterSpacing: 1 }}>ON-CHAIN · BASE · VRF BY ZKVERIFY</span>
