@@ -78,6 +78,7 @@ const TOKEN_ADDR = "0x5E9335199d98402897fA5d3A5F21572280cdCDD0";
 const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const CELL_COST = "1";  // 1 USDC
 const CELL_COST_RAW = 1000000n; // 1 USDC in 6 decimals
+const RESOLVER_SSE_URL = "https://extraordinary-integrity-production-0b2a.up.railway.app/events";
 const ROUND_DURATION = 60;
 const GRID_SIZE = 5;
 const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
@@ -179,19 +180,27 @@ export default function TheGrid() {
   const lastRoundRef = useRef(0);
   const resolverCalledForRound = useRef(0);
   const resolvedRef = useRef(false);
+  const pollStateRef = useRef(null);
 
   // ─── SSE: Real-time events from resolver ───
   const { connected: sseConnected } = useResolverSSE({
-    url: "https://extraordinary-integrity-production-0b2a.up.railway.app/events",
-    onRoundResolved: () => pollState(),
-    onCellPicked: (data) => {
-      setCellCounts(prev => {
-        const next = [...prev];
-        next[data.cell] = (next[data.cell] || 0) + 1;
-        return next;
-      });
-      setClaimedCells(prev => new Set([...prev, data.cell]));
-    },
+    url: RESOLVER_SSE_URL,
+    onRoundResolved: useCallback(() => {
+      // Instant refresh via ref (avoids stale closure)
+      pollStateRef.current?.();
+    }, []),
+    onCellPicked: useCallback((data) => {
+      if (data.cell != null) {
+        const idx = data.cell;
+        setCellCounts(prev => {
+          const next = [...prev];
+          next[idx] = (next[idx] || 0) + 1;
+          return next;
+        });
+        setClaimedCells(prev => new Set([...prev, idx]));
+        setActivePlayers(prev => prev + 1);
+      }
+    }, []),
   });
 
   // ─── Lock body scroll when mobile sidebar is open ───
@@ -370,14 +379,16 @@ export default function TheGrid() {
     }
   }, [address, roundEnd]);
 
+  // Keep ref updated so SSE callback can trigger instant refresh
+  useEffect(() => { pollStateRef.current = pollState; }, [pollState]);
+
   useEffect(() => {
     pollState();
     const tick = () => {
       pollState();
-      // Fast poll (500ms) while waiting for resolution, normal (3s) otherwise
-      // When SSE connected, slow to 10s as safety net
+      // Always fast-poll during resolution window (SSE may drop)
       const resolving = roundEnd > 0 && Date.now() / 1000 > roundEnd && !resolvedRef.current;
-      const interval = sseConnected ? 10000 : (resolving ? 500 : 3000);
+      const interval = resolving ? 500 : (sseConnected ? 5000 : 3000);
       pollRef.current = setTimeout(tick, interval);
     };
     pollRef.current = setTimeout(tick, 3000);
