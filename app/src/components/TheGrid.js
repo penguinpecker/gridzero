@@ -77,7 +77,7 @@ const TOKEN_ADDR = "0x5E9335199d98402897fA5d3A5F21572280cdCDD0";
 const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const CELL_COST = "1";  // 1 USDC
 const CELL_COST_RAW = 1000000n; // 1 USDC in 6 decimals
-const ROUND_DURATION = 30;
+const ROUND_DURATION = 60;
 const GRID_SIZE = 5;
 const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
 const SUPABASE_URL = "https://dqvwpbggjlcumcmlliuj.supabase.co";
@@ -137,6 +137,7 @@ export default function TheGrid() {
   const [gridBalance, setGridBalance] = useState("0");
   const [ethBalance, setEthBalance] = useState("0");
   const [usdcApproved, setUsdcApproved] = useState(false);
+  const [allowanceChecked, setAllowanceChecked] = useState(false);
   const [approving, setApproving] = useState(false);
 
   // UI state
@@ -330,6 +331,7 @@ export default function TheGrid() {
             args: [address, GRID_ADDR],
           });
           setUsdcApproved(allowance >= CELL_COST_RAW);
+          setAllowanceChecked(true);
         } catch (e) {
           console.error("Poll: allowance check failed", e);
         }
@@ -453,8 +455,7 @@ export default function TheGrid() {
         won: h.is_winner,
         resolved: true,
         pot: h.gz_rounds?.total_deposits || "0",
-        payout: h.is_winner ? "winner" : "0",
-        cost: "1000000", // 1 USDC
+        txHash: h.gz_rounds?.resolve_tx_hash || null,
       }));
     } catch (e) {
       console.error("User history fetch error:", e);
@@ -478,20 +479,23 @@ export default function TheGrid() {
   // Refresh user history when round changes (new resolved round might include user)
   useEffect(() => {
     if (round > 1 && address && userHistoryLoaded.current) {
-      // Re-fetch latest to pick up new entries
-      fetchUserHistory(0, 10).then(results => {
-        if (results.length > 0) {
-          setUserHistory(prev => {
-            const merged = [...results];
-            const newIds = new Set(results.map(r => r.roundId));
-            for (const old of prev) {
-              if (!newIds.has(old.roundId)) merged.push(old);
-            }
-            return merged.sort((a, b) => b.roundId - a.roundId);
-          });
-          userHistoryOffset.current = Math.max(userHistoryOffset.current, results.length);
-        }
-      });
+      // Delay 5s to let resolver save to Supabase
+      const timer = setTimeout(() => {
+        fetchUserHistory(0, 10).then(results => {
+          if (results.length > 0) {
+            setUserHistory(prev => {
+              const merged = [...results];
+              const newIds = new Set(results.map(r => r.roundId));
+              for (const old of prev) {
+                if (!newIds.has(old.roundId)) merged.push(old);
+              }
+              return merged.sort((a, b) => b.roundId - a.roundId);
+            });
+            userHistoryOffset.current = Math.max(userHistoryOffset.current, results.length);
+          }
+        });
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, [round]);
 
@@ -548,6 +552,24 @@ export default function TheGrid() {
       setWinningCell(-1);
       setResolved(false);
       resolvedRef.current = false;
+
+      // Delayed Supabase refresh to pick up tx hashes for round history
+      setTimeout(() => {
+        fetchRoundHistory(0, HISTORY_PAGE_SIZE).then(results => {
+          if (results.length > 0) {
+            setRoundHistory(prev => {
+              const supaMap = new Map(results.map(r => [r.roundId, r]));
+              // Merge: prefer Supabase data (has txHash), keep contract-only entries
+              const merged = prev.map(p => supaMap.has(p.roundId) ? { ...p, ...supaMap.get(p.roundId) } : p);
+              // Add any new Supabase entries not yet in history
+              for (const r of results) {
+                if (!merged.some(m => m.roundId === r.roundId)) merged.unshift(r);
+              }
+              return merged.sort((a, b) => b.roundId - a.roundId);
+            });
+          }
+        });
+      }, 6000);
     }
   }, [round]);
 
@@ -718,10 +740,10 @@ export default function TheGrid() {
 
   const getStatus = () => {
     if (!ready) return "INITIALIZING...";
-    if (!authenticated) return "LOGIN TO PLAY";
     if (resolved) return `ROUND ${round} RESOLVED`;
     if (smoothTime <= 0 && round > 0) return `RESOLVING ROUND ${round}...`;
     if (smoothTime <= 0) return "WAITING...";
+    if (!authenticated) return `ROUND ${round} — LOGIN TO PLAY`;
     return `ROUND ${round} ACTIVE`;
   };
 
@@ -998,7 +1020,7 @@ export default function TheGrid() {
           </div>
 
           {/* Approve USDC — one-time, shows when connected but not approved */}
-          {authenticated && !usdcApproved && !approving && (
+          {authenticated && allowanceChecked && !usdcApproved && !approving && (
             <button style={{ ...S.claimBtn, maxWidth: 520, marginTop: 12, background: "linear-gradient(135deg, #ff8800, #ff6600)" }} onClick={approveUsdc}>
               🔓 APPROVE USDC TO PLAY (ONE-TIME)
             </button>
@@ -1062,9 +1084,8 @@ export default function TheGrid() {
               <div className="grid-user-history-scroll" style={{ maxHeight: 240, overflowY: "auto" }}>
                 {userHistory.map((h, i) => {
                   const isWin = h.won;
-                  const displayAmt = isWin
-                    ? Number(BigInt(h.payout)) / 1e18
-                    : Number(BigInt(h.cost)) / 1e18;
+                  const potUsdc = Number(h.pot || 0) / 1e6;
+                  const displayAmt = isWin ? potUsdc : 1;
                   return (
                     <div key={h.roundId} style={{
                       display: "grid", gridTemplateColumns: "40px 60px 32px 1fr",
@@ -1085,7 +1106,7 @@ export default function TheGrid() {
                         fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
                         color: isWin ? "#00cc88" : "#ff3355", textAlign: "right",
                       }}>
-                        {isWin ? "+" : "-"}{displayAmt.toFixed(5)}
+                        {isWin ? "+" : "-"}{displayAmt.toFixed(2)} USDC
                       </span>
                     </div>
                   );
@@ -1312,10 +1333,9 @@ export default function TheGrid() {
 
           {/* Sector Analysis */}
           <Panel title="SECTOR ANALYSIS" live>
-            <Row label="POT SIZE" value={`${fmt(potSize)} ETH`} />
+            <Row label="POT SIZE" value={`${fmt(potSize)} USDC`} />
             <Row label="ACTIVE PLAYERS" value={activePlayers} />
-            <Row label="GRID/ROUND" value="1.0 GRID" />
-            <Row label="MOTHERLODE" value="1000 ZERO" />
+            <Row label="ZERO/ROUND" value="1.0 ZERO" />
             <Row label="CELL COST" value={`${CELL_COST} USDC`} />
           </Panel>
 
@@ -1323,8 +1343,8 @@ export default function TheGrid() {
           {authenticated && (
             <Panel title="UNIT STATUS">
               <Row label="YOUR CELL" value={playerCell >= 0 ? CELL_LABELS[playerCell] : "—"} hl />
-              <Row label="GRID BAL" value={fmt(gridBalance, 2)} />
-              <Row label="ETH BAL" value={fmt(ethBalance)} />
+              <Row label="ZERO BAL" value={fmtEth(gridBalance, 2)} />
+              <Row label="USDC BAL" value={fmt(ethBalance)} />
               <div style={{ padding: "6px 0" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
                   <span style={{ color: "#6a7b8e", letterSpacing: 0.5 }}>WALLET</span>
@@ -1357,9 +1377,8 @@ export default function TheGrid() {
                 )}
                 {userHistory.map((h, i) => {
                   const isWin = h.won;
-                  const displayAmt = isWin
-                    ? Number(BigInt(h.payout)) / 1e18
-                    : Number(BigInt(h.cost)) / 1e18;
+                  const potUsdc = Number(h.pot || 0) / 1e6;
+                  const displayAmt = isWin ? potUsdc : 1;
                   return (
                     <div key={h.roundId} style={{
                       display: "grid", gridTemplateColumns: "38px 62px 28px 1fr", alignItems: "center",
@@ -1381,7 +1400,7 @@ export default function TheGrid() {
                         fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
                         color: isWin ? "#00cc88" : "#ff3355", textAlign: "right",
                       }}>
-                        {isWin ? "+" : "-"}{displayAmt.toFixed(5)} ETH
+                        {isWin ? "+" : "-"}{displayAmt.toFixed(2)} USDC
                       </span>
                     </div>
                   );
