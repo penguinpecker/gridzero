@@ -56,6 +56,10 @@ const GRID_ABI = [
   { name: "getCellPlayers", type: "function", stateMutability: "view",
     inputs: [{ name: "roundId", type: "uint256" }, { name: "cell", type: "uint8" }],
     outputs: [{ name: "", type: "address[]" }] },
+  { name: "protocolFeeBps", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { name: "resolverReward", type: "function", stateMutability: "view",
+    inputs: [], outputs: [{ name: "", type: "uint256" }] },
 ];
 
 const TOKEN_ABI = [
@@ -164,6 +168,7 @@ export default function TheGrid() {
   const [walletView, setWalletView] = useState("menu"); // "menu" | "withdraw"
   const walletDropdownRef = useRef(null);
   const [lastResult, setLastResult] = useState(null); // { roundId, cell, players, pot, txHash }
+  const feeConfig = useRef({ feeBps: 500, resolverReward: 100000 }); // defaults, updated from chain
   const [roundHistory, setRoundHistory] = useState([]); // array of ALL loaded past results, newest first
   const [moneyFlow, setMoneyFlow] = useState(false);
   const [gridFlash, setGridFlash] = useState(false);
@@ -193,6 +198,16 @@ export default function TheGrid() {
       setClaimedCells(prev => new Set([...prev, data.cell]));
     },
   });
+
+  // ─── Read fee config once on mount ───
+  useEffect(() => {
+    Promise.all([
+      publicClient.readContract({ address: GRID_ADDR, abi: GRID_ABI, functionName: "protocolFeeBps" }).catch(() => 500n),
+      publicClient.readContract({ address: GRID_ADDR, abi: GRID_ABI, functionName: "resolverReward" }).catch(() => 100000n),
+    ]).then(([bps, rr]) => {
+      feeConfig.current = { feeBps: Number(bps), resolverReward: Number(rr) };
+    });
+  }, []);
 
   // ─── Lock body scroll when mobile sidebar is open ───
   useEffect(() => {
@@ -465,13 +480,28 @@ export default function TheGrid() {
       const total = parseInt(r.headers.get("content-range")?.split("/")[1] || "0", 10);
       userHistoryTotal.current = total;
       const data = await r.json();
+
+      // Count winners per round for accurate per-player payout
+      const wonRoundIds = (data || []).filter(h => h.is_winner).map(h => h.round_id);
+      let winnersMap = {};
+      if (wonRoundIds.length > 0) {
+        try {
+          const wr = await fetch(
+            `${SUPABASE_URL}/rest/v1/gz_round_players?select=round_id&is_winner=eq.true&round_id=in.(${wonRoundIds.join(",")})`,
+            { headers: dbHeaders }
+          );
+          const wData = await wr.json();
+          for (const w of (wData || [])) winnersMap[w.round_id] = (winnersMap[w.round_id] || 0) + 1;
+        } catch {}
+      }
+
       return (data || []).map(h => ({
         roundId: h.round_id,
         cell: h.cell_picked,
         won: h.is_winner,
         resolved: true,
         pot: h.gz_rounds?.total_deposits || "0",
-        payout: h.is_winner ? "winner" : "0",
+        numWinners: winnersMap[h.round_id] || 1,
         cost: "1000000", // 1 USDC
       }));
     } catch (e) {
@@ -750,14 +780,14 @@ export default function TheGrid() {
     return "empty";
   };
 
-  // Base logo grid pattern: outer=dark, inner=light, middle-row-left=opening
+  // Base logo grid pattern: outer=dark, inner=light, middle-row-center=opening
   // 🟦🟦🟦🟦🟦  Row A (0-4)   — all dark
   // 🟦⬜⬜⬜🟦  Row B (5-9)   — dark|light|light|light|dark
-  // ⬜⬜⬜⬜🟦  Row C (10-14) — opening×4|dark
+  // 🟦⬜⬜⬜🟦  Row C (10-14) — dark|opening×3|dark
   // 🟦⬜⬜⬜🟦  Row D (15-19) — dark|light|light|light|dark
   // 🟦🟦🟦🟦🟦  Row E (20-24) — all dark
-  const DARK_CELLS = new Set([0,1,2,3,4, 5,9, 14, 15,19, 20,21,22,23,24]);
-  const OPENING_CELLS = new Set([10,11,12,13]);
+  const DARK_CELLS = new Set([0,1,2,3,4, 5,9, 10,14, 15,19, 20,21,22,23,24]);
+  const OPENING_CELLS = new Set([11,12,13]);
   const getCellZone = (idx) => {
     if (DARK_CELLS.has(idx)) return "dark";
     if (OPENING_CELLS.has(idx)) return "opening";
@@ -1098,8 +1128,11 @@ export default function TheGrid() {
               <div className="grid-user-history-scroll" style={{ maxHeight: 240, overflowY: "auto" }}>
                 {userHistory.map((h, i) => {
                   const isWin = h.won;
-                  const potUsdc = Number(h.pot || 0) / 1e6;
-                  const displayAmt = isWin ? potUsdc : 1;
+                  const potRaw = Number(h.pot || 0);
+                  const { feeBps, resolverReward } = feeConfig.current;
+                  const distributable = Math.max(potRaw - Math.floor(potRaw * feeBps / 10000) - resolverReward, 0);
+                  const perWinner = distributable / (h.numWinners || 1);
+                  const displayAmt = isWin ? (perWinner / 1e6) : 1;
                   return (
                     <div key={h.roundId} style={{
                       display: "grid", gridTemplateColumns: "40px 60px 32px 1fr",
@@ -1391,8 +1424,11 @@ export default function TheGrid() {
                 )}
                 {userHistory.map((h, i) => {
                   const isWin = h.won;
-                  const potUsdc = Number(h.pot || 0) / 1e6;
-                  const displayAmt = isWin ? potUsdc : 1;
+                  const potRaw = Number(h.pot || 0);
+                  const { feeBps: fb, resolverReward: rr } = feeConfig.current;
+                  const distributable = Math.max(potRaw - Math.floor(potRaw * fb / 10000) - rr, 0);
+                  const perWinner = distributable / (h.numWinners || 1);
+                  const displayAmt = isWin ? (perWinner / 1e6) : 1;
                   return (
                     <div key={h.roundId} style={{
                       display: "grid", gridTemplateColumns: "38px 62px 28px 1fr", alignItems: "center",
