@@ -93,16 +93,17 @@ for (let r = 0; r < GRID_SIZE; r++)
 // Our own public client — WE control the RPC, not MetaMask
 const publicClient = createPublicClient({
   chain: base,
+  batch: { multicall: true },
   transport: fallback([
     http("https://mainnet.base.org", {
-      timeout: 30_000,
-      retryCount: 2,
-      retryDelay: 1000,
+      timeout: 8_000,
+      retryCount: 1,
+      retryDelay: 500,
     }),
     http("https://base.drpc.org", {
-      timeout: 30_000,
-      retryCount: 2,
-      retryDelay: 2000,
+      timeout: 8_000,
+      retryCount: 1,
+      retryDelay: 500,
     }),
   ]),
 });
@@ -243,7 +244,10 @@ export default function TheGrid() {
   // ─── Poll Contract (uses OUR public client, not wallet) ───
   const pollError = useRef(null);
   const pollCount = useRef(0);
+  const pollBusy = useRef(false);
   const pollState = useCallback(async () => {
+    if (pollBusy.current) return; // skip if previous poll still running
+    pollBusy.current = true;
     pollCount.current++;
     try {
       // 1. Get current round (CRITICAL - everything depends on this)
@@ -255,94 +259,61 @@ export default function TheGrid() {
       } catch (e) {
         pollError.current = "RPC: currentRoundId failed - " + (e.shortMessage || e.message || "unknown");
         console.error("Poll: currentRoundId failed", e);
-        return; // Can't continue without round ID
+        return;
       }
       const rNum = Number(roundId);
       setRound(rNum);
-      pollError.current = null; // Clear error on success
+      pollError.current = null;
 
-      // 2. Get round data — V3 field order: [0]start [1]end [2]totalDeposits [3]totalPlayers [4]winningCell [5]resolved [6]isBonusRound
-      try {
-        const rd = await publicClient.readContract({
+      // 2. Fire ALL reads in parallel (viem multicall batches these into ~1 RPC call)
+      const promises = [
+        publicClient.readContract({
           address: GRID_ADDR, abi: GRID_ABI, functionName: "rounds", args: [roundId],
-        });
+        }).catch(() => null),
+        publicClient.readContract({
+          address: GRID_ADDR, abi: GRID_ABI, functionName: "getCellCounts", args: [roundId],
+        }).catch(() => null),
+      ];
+
+      // Player-specific calls (only if wallet connected)
+      if (address) {
+        promises.push(
+          publicClient.readContract({
+            address: GRID_ADDR, abi: GRID_ABI, functionName: "hasJoined", args: [roundId, address],
+          }).catch(() => null),
+          publicClient.readContract({
+            address: TOKEN_ADDR, abi: TOKEN_ABI, functionName: "balanceOf", args: [address],
+          }).catch(() => null),
+          publicClient.readContract({
+            address: USDC_ADDR, abi: USDC_ABI, functionName: "balanceOf", args: [address],
+          }).catch(() => null),
+          publicClient.readContract({
+            address: USDC_ADDR, abi: USDC_ABI, functionName: "allowance", args: [address, GRID_ADDR],
+          }).catch(() => null),
+        );
+      }
+
+      const results = await Promise.all(promises);
+      const [rd, counts] = results;
+
+      // Process round data
+      if (rd) {
         setRoundStart(Number(rd[0]));
         setRoundEnd(Number(rd[1]));
         setPotSize(rd[2].toString());
-        setActivePlayers(Number(rd[3]));         // [3] = totalPlayers
-        const isResolved = rd[5];                // [5] = resolved (bool)
+        setActivePlayers(Number(rd[3]));
+        const isResolved = rd[5];
         setResolved(isResolved);
         resolvedRef.current = isResolved;
-        if (isResolved && Number(rd[4]) >= 0) {  // [4] = winningCell (uint8)
+        if (isResolved && Number(rd[4]) >= 0) {
           setWinningCell(Number(rd[4]));
         } else if (!isResolved) {
           setWinningCell(-1);
         }
-      } catch (e) {
-        console.error("Poll: rounds() failed", e);
       }
 
-      // 3. V3: Resolver bot on Railway handles resolution — no frontend trigger needed
-
-      // 4. Player data (only if connected)
-      if (address) {
-        try {
-          // V3: playerCell stores cell+1 (0 = not entered), subtract 1 for actual index
-          const joined = await publicClient.readContract({
-            address: GRID_ADDR, abi: GRID_ABI, functionName: "hasJoined",
-            args: [roundId, address],
-          });
-          if (joined) {
-            const pc = await publicClient.readContract({
-              address: GRID_ADDR, abi: GRID_ABI, functionName: "playerCell",
-              args: [roundId, address],
-            });
-            setPlayerCell(Number(pc) - 1); // V3: stored as cell+1
-          } else {
-            setPlayerCell(-1);
-          }
-        } catch (e) {
-          console.error("Poll: playerCell failed", e);
-        }
-
-        try {
-          const gridBal = await publicClient.readContract({
-            address: TOKEN_ADDR, abi: TOKEN_ABI, functionName: "balanceOf",
-            args: [address],
-          });
-          setGridBalance(gridBal.toString());
-        } catch (e) {
-          console.error("Poll: balanceOf failed", e);
-        }
-
-        try {
-          const usdcBal = await publicClient.readContract({
-            address: USDC_ADDR, abi: USDC_ABI, functionName: "balanceOf",
-            args: [address],
-          });
-          setEthBalance(usdcBal.toString());
-        } catch (e) {
-          console.error("Poll: USDC balance failed", e);
-        }
-
-        try {
-          const allowance = await publicClient.readContract({
-            address: USDC_ADDR, abi: USDC_ABI, functionName: "allowance",
-            args: [address, GRID_ADDR],
-          });
-          setUsdcApproved(allowance >= CELL_COST_RAW);
-          setAllowanceChecked(true);
-        } catch (e) {
-          console.error("Poll: allowance check failed", e);
-        }
-      }
-
-      // 5. Grid cell player counts (V3: getCellCounts takes roundId)
-      try {
-        const counts = await publicClient.readContract({
-          address: GRID_ADDR, abi: GRID_ABI, functionName: "getCellCounts",
-          args: [roundId],
-        });
+      // Process cell counts
+      if (counts) {
         const claimed = new Set();
         const countsArr = new Array(TOTAL_CELLS).fill(0);
         for (let i = 0; i < TOTAL_CELLS; i++) {
@@ -352,12 +323,35 @@ export default function TheGrid() {
         }
         setClaimedCells(claimed);
         setCellCounts(countsArr);
-      } catch (e) {
-        console.error("Poll: getCellCounts failed", e);
+      }
+
+      // Process player data
+      if (address) {
+        const [, , joined, gridBal, usdcBal, allowance] = results;
+
+        if (joined === true) {
+          try {
+            const pc = await publicClient.readContract({
+              address: GRID_ADDR, abi: GRID_ABI, functionName: "playerCell", args: [roundId, address],
+            });
+            setPlayerCell(Number(pc) - 1);
+          } catch (e) { console.error("Poll: playerCell failed", e); }
+        } else if (joined === false) {
+          setPlayerCell(-1);
+        }
+
+        if (gridBal != null) setGridBalance(gridBal.toString());
+        if (usdcBal != null) setEthBalance(usdcBal.toString());
+        if (allowance != null) {
+          setUsdcApproved(allowance >= CELL_COST_RAW);
+          if (!allowanceChecked) setAllowanceChecked(true);
+        }
       }
     } catch (e) {
       pollError.current = "Poll error: " + (e.shortMessage || e.message || "unknown");
       console.error("Poll error:", e);
+    } finally {
+      pollBusy.current = false;
     }
   }, [address, roundEnd]);
 
@@ -455,7 +449,8 @@ export default function TheGrid() {
         won: h.is_winner,
         resolved: true,
         pot: h.gz_rounds?.total_deposits || "0",
-        txHash: h.gz_rounds?.resolve_tx_hash || null,
+        payout: h.is_winner ? "winner" : "0",
+        cost: "1000000", // 1 USDC
       }));
     } catch (e) {
       console.error("User history fetch error:", e);
@@ -479,23 +474,20 @@ export default function TheGrid() {
   // Refresh user history when round changes (new resolved round might include user)
   useEffect(() => {
     if (round > 1 && address && userHistoryLoaded.current) {
-      // Delay 5s to let resolver save to Supabase
-      const timer = setTimeout(() => {
-        fetchUserHistory(0, 10).then(results => {
-          if (results.length > 0) {
-            setUserHistory(prev => {
-              const merged = [...results];
-              const newIds = new Set(results.map(r => r.roundId));
-              for (const old of prev) {
-                if (!newIds.has(old.roundId)) merged.push(old);
-              }
-              return merged.sort((a, b) => b.roundId - a.roundId);
-            });
-            userHistoryOffset.current = Math.max(userHistoryOffset.current, results.length);
-          }
-        });
-      }, 5000);
-      return () => clearTimeout(timer);
+      // Re-fetch latest to pick up new entries
+      fetchUserHistory(0, 10).then(results => {
+        if (results.length > 0) {
+          setUserHistory(prev => {
+            const merged = [...results];
+            const newIds = new Set(results.map(r => r.roundId));
+            for (const old of prev) {
+              if (!newIds.has(old.roundId)) merged.push(old);
+            }
+            return merged.sort((a, b) => b.roundId - a.roundId);
+          });
+          userHistoryOffset.current = Math.max(userHistoryOffset.current, results.length);
+        }
+      });
     }
   }, [round]);
 
@@ -552,24 +544,6 @@ export default function TheGrid() {
       setWinningCell(-1);
       setResolved(false);
       resolvedRef.current = false;
-
-      // Delayed Supabase refresh to pick up tx hashes for round history
-      setTimeout(() => {
-        fetchRoundHistory(0, HISTORY_PAGE_SIZE).then(results => {
-          if (results.length > 0) {
-            setRoundHistory(prev => {
-              const supaMap = new Map(results.map(r => [r.roundId, r]));
-              // Merge: prefer Supabase data (has txHash), keep contract-only entries
-              const merged = prev.map(p => supaMap.has(p.roundId) ? { ...p, ...supaMap.get(p.roundId) } : p);
-              // Add any new Supabase entries not yet in history
-              for (const r of results) {
-                if (!merged.some(m => m.roundId === r.roundId)) merged.unshift(r);
-              }
-              return merged.sort((a, b) => b.roundId - a.roundId);
-            });
-          }
-        });
-      }, 6000);
     }
   }, [round]);
 
@@ -1335,7 +1309,7 @@ export default function TheGrid() {
           <Panel title="SECTOR ANALYSIS" live>
             <Row label="POT SIZE" value={`${fmt(potSize)} USDC`} />
             <Row label="ACTIVE PLAYERS" value={activePlayers} />
-            <Row label="ZERO/ROUND" value="1.0 ZERO" />
+            <Row label="ZERO/ROUND" value="10 ZERO" />
             <Row label="CELL COST" value={`${CELL_COST} USDC`} />
           </Panel>
 
