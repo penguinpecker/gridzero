@@ -357,9 +357,14 @@ export default function TheGrid() {
 
   useEffect(() => {
     pollState();
-    // Poll every 3s — fast enough for 30s rounds, avoids rate limits
-    pollRef.current = setInterval(pollState, 3000);
-    return () => { clearInterval(pollRef.current); };
+    const tick = () => {
+      pollState();
+      // Fast poll (500ms) while waiting for resolution, normal (3s) otherwise
+      const resolving = roundEnd > 0 && Date.now() / 1000 > roundEnd && !resolvedRef.current;
+      pollRef.current = setTimeout(tick, resolving ? 500 : 3000);
+    };
+    pollRef.current = setTimeout(tick, 3000);
+    return () => { clearTimeout(pollRef.current); };
   }, [pollState]);
 
   // ─── Load round history from Supabase ───
