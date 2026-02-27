@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useResolverSSE } from "./useResolverSSE";
 import { createPublicClient, createWalletClient, custom, http, fallback, parseUnits, encodeFunctionData } from "viem";
 import { base } from "viem/chains";
 
@@ -178,6 +179,20 @@ export default function TheGrid() {
   const lastRoundRef = useRef(0);
   const resolverCalledForRound = useRef(0);
   const resolvedRef = useRef(false);
+
+  // ─── SSE: Real-time events from resolver ───
+  const { connected: sseConnected } = useResolverSSE({
+    url: "https://extraordinary-integrity-production-0b2a.up.railway.app/events",
+    onRoundResolved: () => pollState(),
+    onCellPicked: (data) => {
+      setCellCounts(prev => {
+        const next = [...prev];
+        next[data.cell] = (next[data.cell] || 0) + 1;
+        return next;
+      });
+      setClaimedCells(prev => new Set([...prev, data.cell]));
+    },
+  });
 
   // ─── Lock body scroll when mobile sidebar is open ───
   useEffect(() => {
@@ -360,12 +375,14 @@ export default function TheGrid() {
     const tick = () => {
       pollState();
       // Fast poll (500ms) while waiting for resolution, normal (3s) otherwise
+      // When SSE connected, slow to 10s as safety net
       const resolving = roundEnd > 0 && Date.now() / 1000 > roundEnd && !resolvedRef.current;
-      pollRef.current = setTimeout(tick, resolving ? 500 : 3000);
+      const interval = sseConnected ? 10000 : (resolving ? 500 : 3000);
+      pollRef.current = setTimeout(tick, interval);
     };
     pollRef.current = setTimeout(tick, 3000);
     return () => { clearTimeout(pollRef.current); };
-  }, [pollState]);
+  }, [pollState, sseConnected]);
 
   // ─── Load round history from Supabase ───
   const historyLoaded = useRef(false);
