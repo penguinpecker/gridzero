@@ -77,10 +77,12 @@ export const ERC20_ABI = [
 // ═══════════════════════════════════════════════════════════════
 // Public Client — Base Mainnet
 // ═══════════════════════════════════════════════════════════════
+const ALCHEMY_RPC = process.env.NEXT_PUBLIC_ALCHEMY_RPC || "https://base-mainnet.g.alchemy.com/v2/r6XQwbj3aRRGWp-oJkR7f";
+
 export const publicClient = createPublicClient({
   chain: base,
   transport: fallback([
-    http("https://mainnet.base.org", { timeout: 30_000, retryCount: 2, retryDelay: 1000 }),
-    http("https://base.drpc.org", { timeout: 30_000, retryCount: 2, retryDelay: 2000 }),
+    http(ALCHEMY_RPC, { timeout: 30_000, retryCount: 2, retryDelay: 1000 }),
+    http("https://mainnet.base.org", { timeout: 30_000, retryCount: 2, retryDelay: 2000 }),
   ]),
 });

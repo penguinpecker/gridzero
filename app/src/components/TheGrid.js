@@ -96,19 +96,21 @@ for (let r = 0; r < GRID_SIZE; r++)
     CELL_LABELS.push(`${String.fromCharCode(65 + r)}${c + 1}`);
 
 // Our own public client — WE control the RPC, not MetaMask
+const ALCHEMY_RPC = process.env.NEXT_PUBLIC_ALCHEMY_RPC || "https://base-mainnet.g.alchemy.com/v2/r6XQwbj3aRRGWp-oJkR7f";
+
 const publicClient = createPublicClient({
   chain: base,
   batch: { multicall: true },
   transport: fallback([
+    http(ALCHEMY_RPC, {
+      timeout: 8_000,
+      retryCount: 2,
+      retryDelay: 500,
+    }),
     http("https://mainnet.base.org", {
       timeout: 8_000,
       retryCount: 1,
-      retryDelay: 500,
-    }),
-    http("https://base.drpc.org", {
-      timeout: 8_000,
-      retryCount: 1,
-      retryDelay: 500,
+      retryDelay: 1_000,
     }),
   ]),
 });
@@ -1515,7 +1517,7 @@ export default function TheGrid() {
           <b>⚠ DEBUG:</b> Round = 0 (not loading). Polls: {pollCount.current}.
           {pollError.current && <span> Error: {pollError.current}</span>}
           {!pollError.current && <span> No error caught — poll may not have run yet. Check console.</span>}
-          <br/>RPC: https://mainnet.base.org | Contract: {GRID_ADDR.slice(0,10)}...
+          <br/>RPC: Alchemy (Base) | Contract: {GRID_ADDR.slice(0,10)}...
         </div>
       )}
 
