@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useSendTransaction } from "@privy-io/react-auth";
 import { useResolverSSE } from "./useResolverSSE";
-import { createPublicClient, createWalletClient, custom, http, fallback, parseUnits, encodeFunctionData } from "viem";
+import { createPublicClient, http, fallback, parseUnits, encodeFunctionData } from "viem";
 import { base } from "viem/chains";
 
 // ═══════════════════════════════════════════════════════════════
@@ -130,6 +130,7 @@ const fmtEth = (v, d = 4) => {
 export default function TheGrid() {
   const { ready, authenticated, login, logout, user, exportWallet } = usePrivy();
   const { wallets } = useWallets();
+  const { sendTransaction } = useSendTransaction();
 
   // Contract state
   const [round, setRound] = useState(0);
@@ -635,20 +636,16 @@ export default function TheGrid() {
     setApproving(true);
     setError(null);
     try {
-      await wallet.switchChain(8453);
-      const provider = await wallet.getEthereumProvider();
-      const walletClient = createWalletClient({
-        account: address, chain: base, transport: custom(provider),
-      });
       addFeed("Approving USDC (one-time)...");
       const approveData = encodeFunctionData({
         abi: USDC_ABI, functionName: "approve",
         args: [GRID_ADDR, parseUnits("1000000", 6)],
       });
-      const approveHash = await walletClient.sendTransaction({
-        to: USDC_ADDR, data: approveData, gas: 100000n,
-      });
-      await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      const receipt = await sendTransaction(
+        { to: USDC_ADDR, data: approveData, chainId: 8453 },
+        { sponsor: true }
+      );
+      await publicClient.waitForTransactionReceipt({ hash: receipt.hash });
       setUsdcApproved(true);
       addFeed("USDC approved ✓ — double-tap any cell to play!");
     } catch (e) {
@@ -666,19 +663,6 @@ export default function TheGrid() {
     setError(null);
 
     try {
-      // Switch the embedded wallet to Base
-      await wallet.switchChain(8453);
-
-      // Get the EIP-1193 provider from Privy
-      const provider = await wallet.getEthereumProvider();
-
-      // Create a viem wallet client from the Privy provider
-      const walletClient = createWalletClient({
-        account: address,
-        chain: base,
-        transport: custom(provider),
-      });
-
       // Encode the pickCell call
       const data = encodeFunctionData({
         abi: GRID_ABI,
@@ -686,15 +670,14 @@ export default function TheGrid() {
         args: [cellIndex],
       });
 
-      // Send tx with explicit gas
-      const hash = await walletClient.sendTransaction({
-        to: GRID_ADDR,
-        data,
-        gas: 300000n,
-      });
+      // Send sponsored tx via Privy
+      const receipt = await sendTransaction(
+        { to: GRID_ADDR, data, chainId: 8453 },
+        { sponsor: true }
+      );
 
       addFeed(`◈ Claiming cell ${CELL_LABELS[cellIndex]}...`);
-      await publicClient.waitForTransactionReceipt({ hash });
+      await publicClient.waitForTransactionReceipt({ hash: receipt.hash });
       addFeed(`✓ Cell ${CELL_LABELS[cellIndex]} claimed!`);
       setPlayerCell(cellIndex);
       setSelectedCell(null);
@@ -726,13 +709,6 @@ export default function TheGrid() {
     setWithdrawing(true);
     setError(null);
     try {
-      await wallet.switchChain(8453);
-      const provider = await wallet.getEthereumProvider();
-      const walletClient = createWalletClient({
-        account: address,
-        chain: base,
-        transport: custom(provider),
-      });
       // ERC20 transfer for USDC
       const transferData = encodeFunctionData({
         abi: [{ name: "transfer", type: "function", stateMutability: "nonpayable",
@@ -741,13 +717,12 @@ export default function TheGrid() {
         functionName: "transfer",
         args: [withdrawAddr, parseUnits(withdrawAmt, 6)],
       });
-      const hash = await walletClient.sendTransaction({
-        to: USDC_ADDR,
-        data: transferData,
-        gas: 100000n,
-      });
+      const receipt = await sendTransaction(
+        { to: USDC_ADDR, data: transferData, chainId: 8453 },
+        { sponsor: true }
+      );
       addFeed(`↗ Withdrawing ${withdrawAmt} USDC...`);
-      await publicClient.waitForTransactionReceipt({ hash });
+      await publicClient.waitForTransactionReceipt({ hash: receipt.hash });
       addFeed(`✓ Withdrawn ${withdrawAmt} USDC`);
       setWithdrawAddr("");
       setWithdrawAmt("");
