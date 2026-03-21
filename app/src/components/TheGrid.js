@@ -992,6 +992,24 @@ export default function TheGrid() {
               }} />
             )}
 
+            {/* ─── Resolution overlay ─── */}
+            {smoothTime <= 0 && round > 0 && !resolved && (
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: 8, zIndex: 20,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
+                background: "rgba(6,10,20,0.75)",
+                animation: "fadeIn 0.15s ease-out",
+              }}>
+                <div style={{ position: "relative", width: 56, height: 56 }}>
+                  <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid transparent", borderTopColor: "#1652F0", borderRightColor: "#1652F0", animation: "spin 0.9s linear infinite" }} />
+                  <div style={{ position: "absolute", inset: 7, borderRadius: "50%", border: "2px solid transparent", borderBottomColor: "#3B7BF6", borderLeftColor: "#3B7BF6", animation: "spinR 0.65s linear infinite" }} />
+                  <div style={{ position: "absolute", inset: 14, borderRadius: "50%", border: "2px solid transparent", borderTopColor: "#00cc88", animation: "spin 1.3s linear infinite" }} />
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#3B7BF6", animation: "pulse 1.2s ease-in-out infinite" }}>⬡</div>
+                </div>
+              </div>
+            )}
+
             <div style={S.grid}>
               {CELL_LABELS.map((label, idx) => {
                 const state = getCellState(idx);
@@ -1592,6 +1610,9 @@ export default function TheGrid() {
           50% { text-shadow: 0 0 12px #3B7BF6, 0 0 24px #3B7BF644; }
           100% { text-shadow: 0 0 4px #3B7BF6; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spinR { to { transform: rotate(-360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes dropIn {
           from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
