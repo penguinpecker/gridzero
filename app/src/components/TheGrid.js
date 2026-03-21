@@ -166,6 +166,8 @@ export default function TheGrid() {
   const [withdrawAddr, setWithdrawAddr] = useState("");
   const [withdrawAmt, setWithdrawAmt] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawError, setWithdrawError] = useState("");
+  const [withdrawSuccess, setWithdrawSuccess] = useState("");
   const [copied, setCopied] = useState(false);
   const [walletDropdown, setWalletDropdown] = useState(false); // dropdown open
   const [walletView, setWalletView] = useState("menu"); // "menu" | "withdraw"
@@ -707,8 +709,19 @@ export default function TheGrid() {
   // ─── Withdraw USDC ───
   const withdrawETH = async () => {
     if (!wallet || !withdrawAddr || !withdrawAmt || withdrawing) return;
+    setWithdrawError("");
+    setWithdrawSuccess("");
+    // Validate address: must be 0x + 40 hex chars
+    if (!/^0x[0-9a-fA-F]{40}$/.test(withdrawAddr.trim())) {
+      setWithdrawError("Invalid address — must be a valid 0x Ethereum address");
+      return;
+    }
+    const amt = parseFloat(withdrawAmt);
+    if (isNaN(amt) || amt <= 0) {
+      setWithdrawError("Invalid amount");
+      return;
+    }
     setWithdrawing(true);
-    setError(null);
     try {
       // ERC20 transfer for USDC
       const transferData = encodeFunctionData({
@@ -716,7 +729,7 @@ export default function TheGrid() {
           inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }],
           outputs: [{ type: "bool" }] }],
         functionName: "transfer",
-        args: [withdrawAddr, parseUnits(withdrawAmt, 6)],
+        args: [withdrawAddr.trim(), parseUnits(withdrawAmt, 6)],
       });
       const receipt = await sendTransaction(
         { to: USDC_ADDR, data: transferData, chainId: 8453 },
@@ -725,13 +738,13 @@ export default function TheGrid() {
       addFeed(`↗ Withdrawing ${withdrawAmt} USDC...`);
       await publicClient.waitForTransactionReceipt({ hash: receipt.hash });
       addFeed(`✓ Withdrawn ${withdrawAmt} USDC`);
+      setWithdrawSuccess(`✓ Sent ${withdrawAmt} USDC · ${receipt.hash.slice(0,10)}...${receipt.hash.slice(-6)}`);
       setWithdrawAddr("");
       setWithdrawAmt("");
-      setShowWithdraw(false);
       pollState();
     } catch (e) {
       const msg = e.shortMessage || e.message || "Withdraw failed";
-      setError(msg);
+      setWithdrawError(msg.slice(0, 100));
       addFeed(`✗ Withdraw failed: ${msg.slice(0, 80)}`);
     }
     setWithdrawing(false);
@@ -877,7 +890,7 @@ export default function TheGrid() {
                     background: "rgba(22,82,240,0.04)",
                   }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#3B7BF6", letterSpacing: 1.5 }}>↗ WITHDRAW USDC</span>
-                    <button onClick={() => setWalletView("menu")} style={{
+                    <button onClick={() => { setWalletView("menu"); setWithdrawError(""); setWithdrawSuccess(""); }} style={{
                       fontSize: 10, color: "#6a7b8e", cursor: "pointer", background: "none",
                       border: "1px solid rgba(255,255,255,0.1)", padding: "4px 10px", borderRadius: 4,
                       fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5,
@@ -891,15 +904,25 @@ export default function TheGrid() {
                     <input
                       placeholder="Destination address (0x...)"
                       value={withdrawAddr}
-                      onChange={(e) => setWithdrawAddr(e.target.value)}
-                      style={S.dropdownInput}
+                      onChange={(e) => { setWithdrawAddr(e.target.value); setWithdrawError(""); setWithdrawSuccess(""); }}
+                      style={{ ...S.dropdownInput, borderColor: withdrawError ? "rgba(255,51,85,0.4)" : "rgba(22,82,240,0.15)" }}
                     />
                     <input
                       placeholder="Amount in USDC"
                       value={withdrawAmt}
-                      onChange={(e) => setWithdrawAmt(e.target.value)}
+                      onChange={(e) => { setWithdrawAmt(e.target.value); setWithdrawError(""); setWithdrawSuccess(""); }}
                       style={S.dropdownInput}
                     />
+                    {withdrawError && (
+                      <div style={{ fontSize: 10, color: "#ff3355", padding: "4px 2px", lineHeight: 1.4 }}>
+                        ⚠ {withdrawError}
+                      </div>
+                    )}
+                    {withdrawSuccess && (
+                      <div style={{ fontSize: 10, color: "#00cc88", padding: "4px 2px", lineHeight: 1.4, fontWeight: 600 }}>
+                        {withdrawSuccess}
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                       <button
                         style={{ ...S.claimBtn, flex: 1, fontSize: 11, padding: "10px", opacity: withdrawing ? 0.6 : 1 }}
@@ -910,7 +933,7 @@ export default function TheGrid() {
                       </button>
                       <button
                         style={{ ...S.claimBtn, fontSize: 11, padding: "10px 16px", borderColor: "#4a5a6e", color: "#6a7b8e", background: "none" }}
-                        onClick={() => { setWalletDropdown(false); setWalletView("menu"); setWithdrawAddr(""); setWithdrawAmt(""); }}
+                        onClick={() => { setWalletDropdown(false); setWalletView("menu"); setWithdrawAddr(""); setWithdrawAmt(""); setWithdrawError(""); setWithdrawSuccess(""); }}
                       >
                         CANCEL
                       </button>
