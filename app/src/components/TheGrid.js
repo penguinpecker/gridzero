@@ -415,7 +415,7 @@ export default function TheGrid() {
     setHistoryLoading(true);
     try {
       const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/gz_rounds?select=*&order=round_id.desc&limit=${limit}&offset=${offset}`,
+        `${SUPABASE_URL}/rest/v1/gz_rounds?select=round_id,winning_cell,total_players,total_deposits,resolve_tx_hash,zkverify_tx_hash&total_players=gt.0&resolve_tx_hash=not.is.null&order=round_id.desc&limit=${limit}&offset=${offset}`,
         { headers: { ...dbHeaders, Prefer: "count=exact" } }
       );
       const total = parseInt(r.headers.get("content-range")?.split("/")[1] || "0", 10);
@@ -428,6 +428,7 @@ export default function TheGrid() {
         pot: r.total_deposits,
         resolved: true,
         txHash: r.resolve_tx_hash,
+        zkverifyTxHash: r.zkverify_tx_hash || null,
       }));
       historyOffset.current = offset + results.length;
       if (historyOffset.current >= historyTotal.current) {
@@ -1199,15 +1200,16 @@ export default function TheGrid() {
               </div>
               {/* Column headers */}
               <div style={{
-                display: "grid", gridTemplateColumns: "60px 55px 55px 75px 1fr",
+                display: "grid", gridTemplateColumns: "60px 50px 45px 65px 1fr 1fr",
                 padding: "8px 16px 4px", gap: 4,
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>ROUND</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>WINNER</span>
-                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>PLAYERS</span>
+                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>PLYR</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>POT</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>TX</span>
+                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>ZKV</span>
               </div>
               {/* Rows */}
               <div>
@@ -1221,7 +1223,7 @@ export default function TheGrid() {
                   const isLatest = globalIdx === 0 && moneyFlow;
                   return (
                     <div key={r.roundId} style={{
-                      display: "grid", gridTemplateColumns: "60px 55px 55px 75px 1fr",
+                      display: "grid", gridTemplateColumns: "60px 50px 45px 65px 1fr 1fr",
                       padding: "7px 16px", gap: 4,
                       borderBottom: "1px solid rgba(255,255,255,0.03)",
                       background: isLatest ? "rgba(255,200,0,0.06)" : "transparent",
@@ -1266,6 +1268,20 @@ export default function TheGrid() {
                           >
                             Explorer ↗
                           </a>
+                        )}
+                      </span>
+                      <span style={{ textAlign: "right" }}>
+                        {r.zkverifyTxHash ? (
+                          <a
+                            href={`https://zkverify-explorer.zkverify.io/extrinsics/${r.zkverifyTxHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 10, color: "#00cc88", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace" }}
+                          >
+                            {r.zkverifyTxHash.slice(0, 6)}…{r.zkverifyTxHash.slice(-4)} ↗
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: 10, color: "#2a3a4e" }}>—</span>
                         )}
                       </span>
                     </div>
