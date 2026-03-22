@@ -824,21 +824,21 @@ export default function TheGrid() {
       <div style={S.crtLines} />
 
       {/* ─── HEADER ─── */}
-      <header style={{...S.header, display:"grid", gridTemplateColumns:"1fr auto 1fr"}} className="grid-header">
-        {/* Left — logo */}
-        <div style={S.hLeft}>
-          <LogoIcon size={26} />
+      <header style={{...S.header, display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 16px", gap:6, overflow:"hidden"}} className="grid-header">
+        {/* Left — logo, clickable */}
+        <div style={{...S.hLeft, cursor:"pointer", flexShrink:0}} onClick={()=>window.location.href="/"}>
+          <LogoIcon size={22} />
           <span style={S.logo}>GRID</span>
           <span style={S.logoSub}>ZERO</span>
-          <div style={{width:6,height:6,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:4,flexShrink:0}}/>
+          <div style={{width:5,height:5,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:3,flexShrink:0}}/>
         </div>
-        {/* Center — nav */}
-        <nav style={{display:"flex",alignItems:"center",gap:4}}>
-          <button onClick={()=>window.location.href="/"} className="nav-btn-home" style={{background:"transparent",border:"none",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#4a5a6e",cursor:"pointer",letterSpacing:2,padding:"7px 16px",borderRadius:3,transition:"color 0.2s"}}>HOME</button>
-          <button className="nav-btn-play" style={{background:"transparent",border:"none",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"default",letterSpacing:2,padding:"7px 16px",borderRadius:3,animation:"navGlow 3s ease-in-out infinite"}}>PLAY</button>
+        {/* Center — nav, hidden on mobile */}
+        <nav className="grid-header-nav" style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
+          <button onClick={()=>window.location.href="/"} className="nav-btn-home" style={{background:"transparent",border:"none",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#4a5a6e",cursor:"pointer",letterSpacing:1.5,padding:"6px 10px",borderRadius:3,transition:"color 0.2s"}}>HOME</button>
+          <button className="nav-btn-play" style={{background:"transparent",border:"none",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"default",letterSpacing:1.5,padding:"6px 10px",borderRadius:3,animation:"navGlow 3s ease-in-out infinite"}}>PLAY</button>
         </nav>
         {/* Right — balances + wallet */}
-        <div style={{...S.hRight, gap:10, justifyContent:"flex-end"}}>
+        <div style={{...S.hRight, gap:6, justifyContent:"flex-end", flexShrink:0, minWidth:0}}>
           {authenticated && (
             <>
               <span style={S.hStat} className="grid-header-stat">
@@ -1630,8 +1630,8 @@ export default function TheGrid() {
         @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 4px #3B7BF6}50%{opacity:0.4;box-shadow:0 0 10px #3B7BF6} }
         .nav-btn-home:hover { color: #3B7BF6 !important; }
         .nav-btn-play { pointer-events: none; }
-        @media (max-width: 600px) {
-          .grid-header nav { display: none !important; }
+        @media (max-width: 640px) {
+          .grid-header-nav { display: none !important; }
           .grid-header-stat { display: none !important; }
           .grid-mobile-balances { display: flex !important; }
         }

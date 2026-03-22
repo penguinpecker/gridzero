@@ -87,7 +87,7 @@ export default function HomePage() {
 
       {/* Header */}
       <header style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 24px",height:56,borderBottom:"1px solid rgba(22,82,240,0.12)",background:"rgba(6,10,20,0.97)",zIndex:100,position:"sticky",top:0,boxShadow:"0 1px 0 rgba(22,82,240,0.08)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>router.push("/")}>
           <LogoIcon size={26}/>
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:900,fontSize:16,color:"#3B7BF6",letterSpacing:2}}>GRID</span>
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:500,fontSize:16,color:"#e0e8f0",letterSpacing:2}}>ZERO</span>
@@ -98,13 +98,9 @@ export default function HomePage() {
           <button onClick={()=>router.push("/play")} className="nav-btn-play-hp" style={{background:"transparent",border:"none",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"7px 16px",borderRadius:3,animation:"navGlow 3s ease-in-out infinite",transition:"color 0.2s"}}>PLAY</button>
         </nav>
         <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <button className="mobile-hamburger" onClick={()=>{const m=document.getElementById("hp-mobile-nav");if(m)m.style.display=m.style.display==="flex"?"none":"flex";}} style={{display:"none",background:"none",border:"1px solid rgba(22,82,240,0.2)",borderRadius:4,color:"#3B7BF6",cursor:"pointer",padding:"6px 10px",fontSize:16,lineHeight:1}}>☰</button>
+          <button onClick={()=>router.push("/play")} style={{fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,padding:"7px 14px",borderRadius:5,border:"1px solid rgba(22,82,240,0.3)",background:"rgba(22,82,240,0.08)",color:"#3B7BF6",cursor:"pointer",letterSpacing:1.5,whiteSpace:"nowrap"}}>CONNECT WALLET</button>
         </div>
       </header>
-      <div id="hp-mobile-nav" style={{display:"none",flexDirection:"column",background:"rgba(6,10,20,0.98)",borderBottom:"1px solid rgba(22,82,240,0.12)",position:"sticky",top:56,zIndex:99}}>
-        <button onClick={()=>router.push("/")} style={{background:"none",border:"none",borderBottom:"1px solid rgba(22,82,240,0.08)",fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,color:"#4a5a6e",cursor:"pointer",letterSpacing:2,padding:"14px 20px",textAlign:"left"}}>HOME</button>
-        <button onClick={()=>router.push("/play")} style={{background:"none",border:"none",fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"14px 20px",textAlign:"left"}}>PLAY</button>
-      </div>
 
       {/* ── HERO — single column ── */}
       <section style={{position:"relative",zIndex:5,padding:"56px 20px 40px",maxWidth:680,margin:"0 auto"}}>
@@ -366,11 +362,7 @@ export default function HomePage() {
         @keyframes caretBlink{0%,100%{opacity:1}50%{opacity:0}}
         .nav-btn-home:hover{color:#3B7BF6!important}
         .nav-btn-play-hp:hover{color:#7ab4ff!important}
-        .mobile-hamburger{display:none}
-        @media(max-width:600px){
-          header nav{display:none!important}
-          .mobile-hamburger{display:flex!important}
-        }
+
         @keyframes navGlow{0%,100%{text-shadow:0 0 6px rgba(59,123,246,0.5)}50%{text-shadow:0 0 14px rgba(59,123,246,0.9)}}
         @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 4px #3B7BF6}50%{opacity:0.4;box-shadow:0 0 10px #3B7BF6}}
         *{box-sizing:border-box}
