@@ -868,7 +868,7 @@ export default function TheGrid() {
                 ...S.loginBtn,
                 display: "flex", alignItems: "center", gap: 6,
               }} onClick={() => { setWalletDropdown(!walletDropdown); setWalletView("menu"); }}>
-                {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "WALLET"}
+                {address ? <><span className="wallet-addr-full">{address.slice(0, 6)}...{address.slice(-4)}</span><span className="wallet-addr-short">{address.slice(0, 4)}…{address.slice(-3)}</span></> : "WALLET"}
                 <span style={{ fontSize: 8, opacity: 0.6, transition: "transform 0.2s", transform: walletDropdown ? "rotate(180deg)" : "none" }}>▼</span>
               </button>
               {walletDropdown && walletView === "menu" && (
@@ -1235,8 +1235,14 @@ export default function TheGrid() {
                       </span>
                       <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600, color: "#d0dce8" }}>#{h.roundId}</span>
                       <span style={{ fontSize: 11, color: "#8a9bae" }}>{CELL_LABELS[h.cell] || "?"}</span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, color: "#3B7BF6", fontWeight: 600, textAlign: "right" }}>
+                        {h.pot ? fmt(h.pot) : "—"}
+                      </span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, color: "#7a8b9e", textAlign: "right" }}>
+                        {h.players || "—"}
+                      </span>
                       <span style={{
-                        fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
+                        fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 600,
                         color: isWin ? "#1652F0" : "#2a3a4e", textAlign: "right",
                       }}>
                         {isWin ? "+100 Z" : "—"}
@@ -1527,6 +1533,12 @@ export default function TheGrid() {
           .grid-header-nav { display: none !important; }
           .grid-header-stat { display: none !important; }
           .grid-mobile-balances { display: flex !important; }
+          .wallet-addr-full { display: none !important; }
+          .wallet-addr-short { display: inline !important; }
+          .grid-mobile-balances { font-size: 10px !important; gap: 5px !important; }
+        }
+        @media (min-width: 641px) {
+          .wallet-addr-short { display: none !important; }
         }
         @keyframes dropIn {
           from { opacity: 0; transform: translateY(-6px); }
@@ -1590,7 +1602,10 @@ export default function TheGrid() {
           }
           .grid-header-stat { display: none !important; }
           .grid-mobile-balances { display: flex !important; }
-          .grid-header-wallet-btn { font-size: 10px !important; padding: 6px 10px !important; }
+          .grid-header-wallet-btn { font-size: 10px !important; padding: 5px 8px !important; max-width: 110px !important; overflow: hidden; }
+          .wallet-addr-full { display: none !important; }
+          .wallet-addr-short { display: inline !important; }
+          .grid-mobile-balances { font-size: 10px !important; gap: 4px !important; }
         }
 
       `}</style>
@@ -1669,7 +1684,7 @@ const S = {
     flexWrap: "nowrap", gap: 8, flexShrink: 0,
   },
   hLeft: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 },
-  hRight: { display: "flex", alignItems: "center", gap: 12, flexShrink: 0 },
+  hRight: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0, minWidth: 0 },
   dot: { width: 10, height: 10, borderRadius: 3, background: "#1652F0", boxShadow: "0 0 12px rgba(22,82,240,0.6)" },
   logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 20, color: "#3B7BF6", letterSpacing: 3 },
   logoSub: { fontFamily: "'Orbitron', sans-serif", fontWeight: 500, fontSize: 20, color: "#e0e8f0", letterSpacing: 2 },
