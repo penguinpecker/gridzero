@@ -874,7 +874,7 @@ export default function TheGrid() {
               {walletDropdown && walletView === "menu" && (
                 <div className="grid-wallet-dropdown" style={{
                   position: "absolute", top: "calc(100% + 6px)", right: 0,
-                  width: 210, background: "#0C1220",
+                  width: 280, background: "#0C1220",
                   border: "1px solid rgba(22,82,240,0.25)", borderRadius: 8,
                   overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                   zIndex: 9999, animation: "dropIn 0.15s ease-out",
@@ -894,6 +894,60 @@ export default function TheGrid() {
                   <button onClick={() => { logout(); setWalletDropdown(false); }} style={{ ...S.dropdownItem, color: "#ff3355" }}>
                     <span style={S.dropdownIcon}>⏻</span> Logout
                   </button>
+                  {/* User History inside dropdown */}
+                  {userHistory.length > 0 && (
+                    <div style={{ borderTop: "1px solid rgba(22,82,240,0.1)", padding: "10px 14px 4px" }}>
+                      <div style={{ fontSize: 9, letterSpacing: 2, color: "#3B7BF6", fontWeight: 700, marginBottom: 8 }}>YOUR HISTORY</div>
+                      <div style={{ maxHeight: 200, overflowY: "auto" }}>
+                        {userHistory.map((h, i) => {
+                          const isWin = h.won;
+                          const potRaw = Number(h.pot || 0);
+                          const { feeBps: fb, resolverReward: rr } = feeConfig.current;
+                          const distributable = Math.max(potRaw - Math.floor(potRaw * fb / 10000) - rr, 0);
+                          const perWinner = distributable / (h.numWinners || 1);
+                          const displayAmt = isWin ? (perWinner / 1e6) : 1;
+                          return (
+                            <div key={h.roundId} style={{
+                              display: "grid", gridTemplateColumns: "36px 58px 26px 1fr",
+                              alignItems: "center", padding: "5px 0", gap: 6,
+                              borderBottom: i < userHistory.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none",
+                              fontSize: 11,
+                            }}>
+                              <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1, padding: "2px 4px", borderRadius: 3, textAlign: "center", background: isWin ? "rgba(0,204,136,0.12)" : "rgba(255,51,85,0.1)", color: isWin ? "#00cc88" : "#ff3355" }}>
+                                {isWin ? "WON" : "LOST"}
+                              </span>
+                              <span style={{ color: "#6a7b8e", fontSize: 10 }}>R#{h.roundId}</span>
+                              <span style={{ color: "#4a5a6e", fontSize: 10 }}>{CELL_LABELS[h.cell] || "?"}</span>
+                              <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 600, color: isWin ? "#00cc88" : "#ff3355", textAlign: "right" }}>
+                                {isWin ? "+" : "-"}{displayAmt.toFixed(2)} USDC
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {userHistoryOffset.current < userHistoryTotal.current && (
+                        <button
+                          onClick={() => {
+                            setUserHistoryLoading(true);
+                            fetchUserHistory(userHistoryOffset.current, 10).then(results => {
+                              setUserHistory(prev => {
+                                const ids = new Set(prev.map(h => h.roundId));
+                                return [...prev, ...results.filter(r => !ids.has(r.roundId))];
+                              });
+                              userHistoryOffset.current += results.length;
+                              setUserHistoryLoading(false);
+                            });
+                          }}
+                          style={{ width: "100%", padding: "7px 0", marginTop: 6, background: "none", border: "1px solid rgba(22,82,240,0.15)", borderRadius: 4, color: "#3B7BF6", fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, letterSpacing: 1, cursor: "pointer" }}
+                        >
+                          {userHistoryLoading ? "SCANNING..." : "LOAD MORE"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {!authenticated && userHistory.length === 0 && userHistoryLoading && (
+                    <div style={{ padding: "8px 14px", fontSize: 10, color: "#4a5a6e" }}>Scanning rounds...</div>
+                  )}
                 </div>
               )}
               {walletDropdown && walletView === "withdraw" && (
@@ -963,15 +1017,7 @@ export default function TheGrid() {
               )}
             </div>
           )}
-          <button style={{
-            ...S.menuBtn,
-            display: "none", alignItems: "center", justifyContent: "center",
-            width: 44, height: 44, fontSize: 20,
-            border: "1px solid rgba(22,82,240,0.3)",
-            background: "rgba(22,82,240,0.06)",
-            color: "#3B7BF6",
-            WebkitTapHighlightColor: "transparent",
-          }} className="grid-menu-btn" onClick={() => { setMobileMenu(!mobileMenu); setWalletDropdown(false); }}>☰</button>
+
         </div>
       </header>
 
@@ -1390,166 +1436,6 @@ export default function TheGrid() {
           })()}
         </div>
 
-        {/* ─── SIDEBAR ─── */}
-        <div
-          className={`grid-sidebar-backdrop ${mobileMenu ? "open" : ""}`}
-          onClick={() => setMobileMenu(false)}
-          onTouchMove={(e) => e.preventDefault()}
-        />
-        <div style={S.sidebar} className={`grid-sidebar ${mobileMenu ? "open" : ""}`}>
-          {/* Mobile sticky header */}
-          <div className="grid-sidebar-header">
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <LogoIcon size={22} />
-              <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 2, color: "#3B7BF6" }}>GRID<span style={{ color: "#e0e8f0" }}>ZERO</span></span>
-            </span>
-            <button
-              onClick={() => setMobileMenu(false)}
-              style={{
-                background: "rgba(22,82,240,0.1)", border: "1px solid rgba(22,82,240,0.3)",
-                color: "#3B7BF6", fontSize: 13, fontWeight: 700, cursor: "pointer",
-                padding: "10px 18px", borderRadius: 6, fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: 1, minHeight: 44, minWidth: 44,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}
-            >
-              ✕ CLOSE
-            </button>
-          </div>
-
-          {/* Login prompt */}
-          {!authenticated && (
-            <div style={S.loginPrompt}>
-              <LogoIcon size={56} />
-              <div style={S.loginPromptTitle}>ENTER GRID ZERO</div>
-              <div style={S.loginPromptText}>Login with email or Google to get an instant wallet and start playing.</div>
-              <button style={S.claimBtn} onClick={login}>LOGIN TO PLAY</button>
-            </div>
-          )}
-
-          {/* Sector Analysis */}
-          <Panel title="SECTOR ANALYSIS" live>
-            <Row label="POT SIZE" value={`${fmt(potSize)} USDC`} />
-            <Row label="ACTIVE PLAYERS" value={activePlayers} />
-            <Row label="ZERO/ROUND" value="10 ZERO" />
-            <Row label="CELL COST" value={`${CELL_COST} USDC`} />
-          </Panel>
-
-          {/* Unit Status */}
-          {authenticated && (
-            <Panel title="UNIT STATUS">
-              <Row label="YOUR CELL" value={playerCell >= 0 ? CELL_LABELS[playerCell] : "—"} hl />
-              <Row label="ZERO BAL" value={fmtEth(gridBalance, 2)} />
-              <Row label="USDC BAL" value={fmt(ethBalance)} />
-              <div style={{ padding: "6px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                  <span style={{ color: "#6a7b8e", letterSpacing: 0.5 }}>WALLET</span>
-                  <button onClick={copyAddress} style={{ background: "none", border: "none", color: copied ? "#00cc88" : "#3B7BF6", cursor: "pointer", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
-                    {copied ? "✓ COPIED" : "📋 COPY"}
-                  </button>
-                </div>
-                <div style={{ fontSize: 10, color: "#8a9bae", wordBreak: "break-all", marginTop: 4, padding: "6px 8px", background: "rgba(22,82,240,0.04)", borderRadius: 4, border: "1px solid rgba(22,82,240,0.08)", lineHeight: 1.6 }}>
-                  {address || "—"}
-                </div>
-                <div style={{ fontSize: 9, color: "#4a5a6e", marginTop: 4 }}>Send USDC on Base to this address to fund your wallet</div>
-              </div>
-            </Panel>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div style={S.errorBox} onClick={() => setError(null)}>⚠ {error.slice(0, 120)}</div>
-          )}
-
-          {/* User History */}
-          {authenticated && (
-            <Panel title="YOUR HISTORY">
-              <div style={{ maxHeight: 220, overflowY: "auto" }}>
-                {userHistoryLoading && userHistory.length === 0 && (
-                  <div style={{ fontSize: 11, color: "#4a5a6e", padding: "10px 0", fontStyle: "italic" }}>Scanning past rounds...</div>
-                )}
-                {!userHistoryLoading && userHistory.length === 0 && (
-                  <div style={{ fontSize: 11, color: "#4a5a6e", padding: "10px 0", fontStyle: "italic" }}>No rounds played yet</div>
-                )}
-                {userHistory.map((h, i) => {
-                  const isWin = h.won;
-                  const potRaw = Number(h.pot || 0);
-                  const { feeBps: fb, resolverReward: rr } = feeConfig.current;
-                  const distributable = Math.max(potRaw - Math.floor(potRaw * fb / 10000) - rr, 0);
-                  const perWinner = distributable / (h.numWinners || 1);
-                  const displayAmt = isWin ? (perWinner / 1e6) : 1;
-                  return (
-                    <div key={h.roundId} style={{
-                      display: "grid", gridTemplateColumns: "38px 62px 28px 1fr", alignItems: "center",
-                      padding: "6px 0", gap: 6,
-                      borderBottom: i < userHistory.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none",
-                      fontSize: 11,
-                    }}>
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, letterSpacing: 1,
-                        padding: "2px 5px", borderRadius: 3, textAlign: "center",
-                        background: isWin ? "rgba(0,204,136,0.12)" : "rgba(255,51,85,0.1)",
-                        color: isWin ? "#00cc88" : "#ff3355",
-                      }}>
-                        {isWin ? "WON" : "LOST"}
-                      </span>
-                      <span style={{ color: "#6a7b8e" }}>R#{h.roundId}</span>
-                      <span style={{ color: "#4a5a6e", fontSize: 10 }}>{CELL_LABELS[h.cell] || "?"}</span>
-                      <span style={{
-                        fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
-                        color: isWin ? "#00cc88" : "#ff3355", textAlign: "right",
-                      }}>
-                        {isWin ? "+" : "-"}{displayAmt.toFixed(2)} USDC
-                      </span>
-                    </div>
-                  );
-                })}
-                {userHistory.length > 0 && userHistoryOffset.current < userHistoryTotal.current && (
-                  <button
-                    onClick={() => {
-                      setUserHistoryLoading(true);
-                      fetchUserHistory(userHistoryOffset.current, 10).then(results => {
-                        setUserHistory(prev => {
-                          const ids = new Set(prev.map(h => h.roundId));
-                          return [...prev, ...results.filter(r => !ids.has(r.roundId))];
-                        });
-                        userHistoryOffset.current += results.length;
-                        setUserHistoryLoading(false);
-                      });
-                    }}
-                    style={{
-                      width: "100%", padding: "8px 0", marginTop: 6,
-                      background: "none", border: "1px solid rgba(22,82,240,0.15)",
-                      borderRadius: 4, color: "#3B7BF6", fontSize: 10,
-                      fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
-                      letterSpacing: 1, cursor: "pointer",
-                    }}
-                  >
-                    {userHistoryLoading ? "SCANNING..." : "LOAD MORE"}
-                  </button>
-                )}
-              </div>
-            </Panel>
-          )}
-
-          {/* Feed */}
-          <Panel title="EXTRACTION FEED">
-            <div style={S.feedBody}>
-              {feed.length === 0 ? (
-                <div style={S.feedEmpty}>Waiting for activity...</div>
-              ) : (
-                feed.map((f, i) => (
-                  <div key={f.time + "-" + i} style={{ ...S.feedItem, opacity: 1 - i * 0.06 }}>
-                    <span style={S.feedTime}>
-                      {new Date(f.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                    </span>
-                    <span>{f.msg}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </Panel>
-        </div>
       </div>
 
       {/* Debug: show poll errors visibly */}
@@ -1698,14 +1584,8 @@ export default function TheGrid() {
           .grid-header-stat { display: none !important; }
           .grid-mobile-balances { display: flex !important; }
           .grid-header-wallet-btn { font-size: 10px !important; padding: 6px 10px !important; }
-          .grid-menu-btn { display: flex !important; }
         }
-        @media (min-width: 769px) {
-          .grid-menu-btn { display: none !important; }
-          .grid-sidebar-backdrop { display: none !important; }
-          .grid-sidebar-header { display: none !important; }
-          .grid-mobile-user-history { display: none !important; }
-        }
+
       `}</style>
     </div>
   );
