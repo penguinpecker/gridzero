@@ -524,6 +524,7 @@ export default function TheGrid() {
         won: h.is_winner,
         resolved: true,
         pot: h.gz_rounds?.total_deposits || "0",
+        players: h.gz_rounds?.total_players || "—",
         numWinners: winnersMap[h.round_id] || 1,
         cost: "1000000", // 1 USDC
       }));
@@ -1612,7 +1613,6 @@ export default function TheGrid() {
             min-height: 0 !important;
           }
           .grid-header-stat { display: none !important; }
-          .grid-mobile-balances { display: flex !important; }
           .grid-header-wallet-btn { font-size: 10px !important; }
         }
 
