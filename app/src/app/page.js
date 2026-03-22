@@ -86,21 +86,22 @@ export default function HomePage() {
       <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:2,transition:"background 0.04s linear",background:scanBg}}/>
 
       {/* Header */}
-      <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 24px",height:56,borderBottom:"1px solid rgba(22,82,240,0.12)",background:"rgba(6,10,20,0.97)",zIndex:100,position:"sticky",top:0,gap:12,boxShadow:"0 1px 0 rgba(22,82,240,0.08)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+      <header style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 24px",height:56,borderBottom:"1px solid rgba(22,82,240,0.12)",background:"rgba(6,10,20,0.97)",zIndex:100,position:"sticky",top:0,boxShadow:"0 1px 0 rgba(22,82,240,0.08)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           <LogoIcon size={26}/>
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:900,fontSize:16,color:"#3B7BF6",letterSpacing:2}}>GRID</span>
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:500,fontSize:16,color:"#e0e8f0",letterSpacing:2}}>ZERO</span>
           <div style={{width:6,height:6,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:4}}/>
         </div>
         <nav style={{display:"flex",alignItems:"center",gap:6}}>
-          <button onClick={()=>router.push("/")} style={{background:"transparent",border:"1px solid rgba(22,82,240,0.25)",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#4a6aaa",cursor:"pointer",letterSpacing:2,padding:"6px 16px",borderRadius:3,transition:"all 0.2s"}}>HOME</button>
+          <button onClick={()=>router.push("/")} style={{background:"transparent",border:"1px solid rgba(22,82,240,0.25)",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#4a6aaa",cursor:"pointer",letterSpacing:2,padding:"6px 16px",borderRadius:3}}>HOME</button>
           <div style={{position:"relative",display:"inline-block"}}>
-            <div style={{position:"absolute",top:-1,left:-1,width:6,height:6,borderLeft:"1px solid #3B7BF6",borderTop:"1px solid #3B7BF6"}}/>
-            <div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,borderRight:"1px solid #3B7BF6",borderBottom:"1px solid #3B7BF6"}}/>
+            <div style={{position:"absolute",top:-1,left:-1,width:6,height:6,borderLeft:"1px solid #3B7BF6",borderTop:"1px solid #3B7BF6",pointerEvents:"none"}}/>
+            <div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,borderRight:"1px solid #3B7BF6",borderBottom:"1px solid #3B7BF6",pointerEvents:"none"}}/>
             <button onClick={()=>router.push("/play")} style={{background:"rgba(22,82,240,0.1)",border:"1px solid #3B7BF6",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"6px 16px",borderRadius:2,textShadow:"0 0 8px rgba(59,123,246,0.5)",animation:"navGlow 3s ease-in-out infinite"}}>PLAY ›</button>
           </div>
         </nav>
+        <div/>
       </header>
 
       {/* ── HERO — single column ── */}

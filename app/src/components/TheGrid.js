@@ -824,18 +824,25 @@ export default function TheGrid() {
       <div style={S.crtLines} />
 
       {/* ─── HEADER ─── */}
-      <header style={S.header} className="grid-header">
+      <header style={{...S.header, display:"grid", gridTemplateColumns:"1fr auto 1fr"}} className="grid-header">
+        {/* Left — logo */}
         <div style={S.hLeft}>
-          <LogoIcon size={28} />
+          <LogoIcon size={26} />
           <span style={S.logo}>GRID</span>
           <span style={S.logoSub}>ZERO</span>
-          <span style={S.badge}>BASE · MAINNET</span>
-          <a href="/how-to-play" className="grid-header-stat" style={{ ...S.badge, textDecoration: "none", cursor: "pointer", background: "rgba(22,82,240,0.06)", border: "1px solid rgba(22,82,240,0.15)" }}>? HOW TO PLAY</a>
+          <div style={{width:6,height:6,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:4,flexShrink:0}}/>
         </div>
-        <div style={{ ...S.hRight, gap: 10 }}>
-          <span style={S.hStat} className="grid-header-stat">
-            RND <b style={{ color: "#e0e8f0" }}>#{round}</b>
-          </span>
+        {/* Center — nav */}
+        <nav style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>window.location.href="/"} style={{background:"transparent",border:"1px solid rgba(22,82,240,0.25)",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#4a6aaa",cursor:"pointer",letterSpacing:2,padding:"6px 14px",borderRadius:3}}>HOME</button>
+          <div style={{position:"relative",display:"inline-block"}}>
+            <div style={{position:"absolute",top:-1,left:-1,width:6,height:6,borderLeft:"1px solid #3B7BF6",borderTop:"1px solid #3B7BF6",pointerEvents:"none"}}/>
+            <div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,borderRight:"1px solid #3B7BF6",borderBottom:"1px solid #3B7BF6",pointerEvents:"none"}}/>
+            <button style={{background:"rgba(22,82,240,0.1)",border:"1px solid #3B7BF6",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"default",letterSpacing:2,padding:"6px 14px",borderRadius:2,textShadow:"0 0 8px rgba(59,123,246,0.5)",animation:"navGlow 3s ease-in-out infinite"}}>PLAY ›</button>
+          </div>
+        </nav>
+        {/* Right — balances + wallet */}
+        <div style={{...S.hRight, gap:10, justifyContent:"flex-end"}}>
           {authenticated && (
             <>
               <span style={S.hStat} className="grid-header-stat">
@@ -1623,6 +1630,8 @@ export default function TheGrid() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes spinR { to { transform: rotate(-360deg); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes navGlow { 0%,100%{text-shadow:0 0 6px rgba(59,123,246,0.5)}50%{text-shadow:0 0 14px rgba(59,123,246,0.9)} }
+        @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 4px #3B7BF6}50%{opacity:0.4;box-shadow:0 0 10px #3B7BF6} }
         @keyframes dropIn {
           from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
