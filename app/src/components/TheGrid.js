@@ -1183,7 +1183,7 @@ export default function TheGrid() {
           {/* ─── MOBILE USER HISTORY (hidden on desktop, shown on mobile) ─── */}
           {authenticated && userHistory.length > 0 && (
             <div className="grid-mobile-user-history" style={{
-              width: "100%", maxWidth: 620, marginTop: 14,
+              width: "100%", maxWidth: 520, marginTop: 14,
               borderRadius: 10,
               border: "1px solid rgba(22,82,240,0.2)",
               background: "rgba(22,82,240,0.03)",
@@ -1314,7 +1314,7 @@ export default function TheGrid() {
               </div>
               {/* Column headers */}
               <div style={{
-                display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px",
+                display: "grid", gridTemplateColumns: "62px 50px 40px 56px 1fr 96px",
                 padding: "8px 16px 4px", gap: 4,
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}>
@@ -1337,7 +1337,7 @@ export default function TheGrid() {
                   const isLatest = globalIdx === 0 && moneyFlow;
                   return (
                     <div key={r.roundId} style={{
-                      display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px",
+                      display: "grid", gridTemplateColumns: "62px 50px 40px 56px 1fr 96px",
                       padding: "7px 16px", gap: 4,
                       borderBottom: "1px solid rgba(255,255,255,0.03)",
                       background: isLatest ? "rgba(255,200,0,0.06)" : "transparent",
