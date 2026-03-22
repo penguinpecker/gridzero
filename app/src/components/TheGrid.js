@@ -829,8 +829,8 @@ export default function TheGrid() {
         {/* Left — logo, clickable */}
         <div style={{...S.hLeft, cursor:"pointer", flexShrink:0}} onClick={()=>window.location.href="/"}>
           <LogoIcon size={22} />
-          <span style={S.logo}>GRID</span>
-          <span style={S.logoSub}>ZERO</span>
+          <span style={S.logo} className="grid-logo-text">GRID</span>
+          <span style={S.logoSub} className="grid-logo-text">ZERO</span>
           <div style={{width:5,height:5,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:3,flexShrink:0}}/>
         </div>
         {/* Center — nav, hidden on mobile */}
@@ -1262,8 +1262,8 @@ export default function TheGrid() {
                         {isWin ? "+100 Z" : "—"}
                       </span>
                       <span style={{
-                        fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
-                        color: isWin ? "#00cc88" : "#ff3355", textAlign: "right",
+                        fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 600,
+                        color: isWin ? "#00cc88" : "#ff3355", textAlign: "right", whiteSpace: "nowrap",
                       }}>
                         {isWin ? "+" : "-"}{displayAmt.toFixed(2)} USDC
                       </span>
@@ -1334,13 +1334,12 @@ export default function TheGrid() {
               </div>
               {/* Column headers */}
               <div style={{
-                display: "grid", gridTemplateColumns: "62px 50px 40px 56px 1fr 96px",
+                display: "grid", gridTemplateColumns: "62px 52px 52px 1fr 1fr",
                 padding: "8px 16px 4px", gap: 4,
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>ROUND</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>WINNER</span>
-                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>PLYR</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>POT</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>TRANSFER</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>VRF</span>
@@ -1357,7 +1356,7 @@ export default function TheGrid() {
                   const isLatest = globalIdx === 0 && moneyFlow;
                   return (
                     <div key={r.roundId} style={{
-                      display: "grid", gridTemplateColumns: "62px 50px 40px 56px 1fr 96px",
+                      display: "grid", gridTemplateColumns: "62px 52px 52px 1fr 1fr",
                       padding: "7px 16px", gap: 4,
                       borderBottom: "1px solid rgba(255,255,255,0.03)",
                       background: isLatest ? "rgba(255,200,0,0.06)" : "transparent",
@@ -1374,10 +1373,6 @@ export default function TheGrid() {
                       }}>
                         {r.resolved === false ? "⏳" : (CELL_LABELS[r.cell] || "?")} {globalIdx === 0 && r.resolved !== false ? "★" : ""}
                       </span>
-                      <span style={{
-                        fontFamily: "'Orbitron', sans-serif", fontSize: 11,
-                        color: "#c8d6e5",
-                      }}>{r.players}</span>
                       <span style={{
                         fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
                         color: isLatest ? "#ffc800" : "#3B7BF6",
@@ -1551,6 +1546,9 @@ export default function TheGrid() {
           .grid-mobile-balances { display: none !important; }
           .wallet-addr-desktop { display: none !important; }
           .wallet-addr-mobile { display: flex !important; }
+          .grid-logo-text { font-size: 14px !important; letter-spacing: 1px !important; }
+          .grid-header-logo-icon { width: 18px !important; height: 18px !important; }
+          .grid-header-wallet-btn button { font-size: 9px !important; padding: 5px 8px !important; letter-spacing: 0.5px !important; }
         }
         @keyframes dropIn {
           from { opacity: 0; transform: translateY(-6px); }
@@ -1694,13 +1692,13 @@ const S = {
   hLeft: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 },
   hRight: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0, minWidth: 0 },
   dot: { width: 10, height: 10, borderRadius: 3, background: "#1652F0", boxShadow: "0 0 12px rgba(22,82,240,0.6)" },
-  logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 20, color: "#3B7BF6", letterSpacing: 3 },
-  logoSub: { fontFamily: "'Orbitron', sans-serif", fontWeight: 500, fontSize: 20, color: "#e0e8f0", letterSpacing: 2 },
+  logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 18, color: "#3B7BF6", letterSpacing: 2 },
+  logoSub: { fontFamily: "'Orbitron', sans-serif", fontWeight: 500, fontSize: 18, color: "#e0e8f0", letterSpacing: 2 },
   badge: { fontSize: 9, padding: "2px 6px", borderRadius: 3, background: "rgba(22,82,240,0.12)", color: "#3B7BF6", letterSpacing: 1.5, fontWeight: 600 },
   hStat: { fontSize: 13, color: "#7a8b9e", letterSpacing: 0.5, fontFamily: "'JetBrains Mono', monospace" },
   loginBtn: {
     fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 700,
-    padding: "8px 16px", borderRadius: 6,
+    padding: "7px 12px", borderRadius: 6,
     border: "1px solid #1652F0",
     background: "linear-gradient(135deg, rgba(22,82,240,0.2), rgba(22,82,240,0.05))",
     color: "#3B7BF6", cursor: "pointer", letterSpacing: 1.5,
