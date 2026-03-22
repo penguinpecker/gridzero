@@ -657,10 +657,10 @@ export default function TheGrid() {
     setApproving(true);
     setError(null);
     try {
-      addFeed("Approving USDC (one-time)...");
+      addFeed("Approving 100 USDC...");
       const approveData = encodeFunctionData({
         abi: USDC_ABI, functionName: "approve",
-        args: [GRID_ADDR, parseUnits("1000000", 6)],
+        args: [GRID_ADDR, parseUnits("100", 6)],
       });
       const receipt = await sendTransaction(
         { to: USDC_ADDR, data: approveData, chainId: 8453 },
@@ -668,7 +668,7 @@ export default function TheGrid() {
       );
       await publicClient.waitForTransactionReceipt({ hash: receipt.hash });
       setUsdcApproved(true);
-      addFeed("USDC approved ✓ — double-tap any cell to play!");
+      addFeed("USDC approved ✓ (100 USDC) — double-tap any cell to play!");
     } catch (e) {
       const msg = e.shortMessage || e.message || "Approval failed";
       setError(msg);
@@ -1163,7 +1163,12 @@ export default function TheGrid() {
           {/* Approve USDC — one-time, shows when connected but not approved */}
           {authenticated && allowanceChecked && !usdcApproved && !approving && (
             <button style={{ ...S.claimBtn, maxWidth: 620, marginTop: 12, background: "linear-gradient(135deg, #3B7BF6, #1652F0)" }} onClick={approveUsdc}>
-              🔓 APPROVE USDC TO PLAY (ONE-TIME)
+              🔓 APPROVE 100 USDC TO PLAY
+            </button>
+          )}
+          {authenticated && usdcApproved && allowanceChecked && !approving && (
+            <button style={{ ...S.claimBtn, maxWidth: 620, marginTop: 12, background: "none", border: "1px solid rgba(22,82,240,0.25)", color: "#4a5a6e", fontSize: 11 }} onClick={approveUsdc}>
+              ↻ TOP UP APPROVAL (100 USDC)
             </button>
           )}
           {approving && (
