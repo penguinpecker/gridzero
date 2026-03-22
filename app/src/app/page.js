@@ -86,14 +86,21 @@ export default function HomePage() {
       <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:2,transition:"background 0.04s linear",background:scanBg}}/>
 
       {/* Header */}
-      <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:"1px solid rgba(22,82,240,0.12)",background:"rgba(6,10,20,0.96)",zIndex:100,position:"sticky",top:0}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 24px",height:56,borderBottom:"1px solid rgba(22,82,240,0.12)",background:"rgba(6,10,20,0.97)",zIndex:100,position:"sticky",top:0,gap:12,boxShadow:"0 1px 0 rgba(22,82,240,0.08)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
           <LogoIcon size={26}/>
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:900,fontSize:16,color:"#3B7BF6",letterSpacing:2}}>GRID</span>
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:500,fontSize:16,color:"#e0e8f0",letterSpacing:2}}>ZERO</span>
-          <span style={{fontSize:9,padding:"2px 6px",borderRadius:3,background:"rgba(22,82,240,0.12)",color:"#3B7BF6",letterSpacing:1.5,fontWeight:700}}>BASE</span>
+          <div style={{width:6,height:6,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:4}}/>
         </div>
-        <button onClick={() => router.push("/play")} style={{fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,padding:"8px 16px",borderRadius:6,border:"none",background:"linear-gradient(135deg,#1652F0,#3B7BF6)",color:"#fff",cursor:"pointer",letterSpacing:1}}>PLAY NOW →</button>
+        <nav style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>router.push("/")} style={{background:"transparent",border:"1px solid rgba(22,82,240,0.25)",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#4a6aaa",cursor:"pointer",letterSpacing:2,padding:"6px 16px",borderRadius:3,transition:"all 0.2s"}}>HOME</button>
+          <div style={{position:"relative",display:"inline-block"}}>
+            <div style={{position:"absolute",top:-1,left:-1,width:6,height:6,borderLeft:"1px solid #3B7BF6",borderTop:"1px solid #3B7BF6"}}/>
+            <div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,borderRight:"1px solid #3B7BF6",borderBottom:"1px solid #3B7BF6"}}/>
+            <button onClick={()=>router.push("/play")} style={{background:"rgba(22,82,240,0.1)",border:"1px solid #3B7BF6",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"6px 16px",borderRadius:2,textShadow:"0 0 8px rgba(59,123,246,0.5)",animation:"navGlow 3s ease-in-out infinite"}}>PLAY ›</button>
+          </div>
+        </nav>
       </header>
 
       {/* ── HERO — single column ── */}
@@ -331,15 +338,21 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,padding:"14px 20px",borderTop:"1px solid rgba(22,82,240,0.08)",background:"rgba(6,10,20,0.96)",zIndex:10,position:"relative"}}>
+      <footer style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,padding:"16px 24px",borderTop:"1px solid rgba(22,82,240,0.08)",background:"rgba(6,10,20,0.97)",zIndex:10,position:"relative"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <LogoIcon size={16}/>
-          <span style={{fontSize:11,fontWeight:700,color:"#3B7BF6",letterSpacing:1.5,animation:"scanGlow 3s ease-in-out infinite"}}>GRID ONLINE</span>
+          <span style={{fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",letterSpacing:1.5,animation:"scanGlow 3s ease-in-out infinite"}}>GRID ONLINE</span>
         </div>
-        <div style={{display:"flex",gap:16}}>
-          {["CONTRACT","GITHUB","ZKVERIFY"].map(l=><a key={l} href="#" style={{fontSize:10,color:"#4a5a6e",textDecoration:"none",letterSpacing:1}}>{l}</a>)}
+        <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}>
+          <a href="https://x.com/gridzerogg" target="_blank" rel="noopener noreferrer"
+            style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#5a6a7e",textDecoration:"none",letterSpacing:1,padding:"4px 10px",borderRadius:4,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.02)"}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            @gridzerogg
+          </a>
+          <a href="#" target="_blank" rel="noopener noreferrer" style={{fontSize:10,color:"#3a4a5e",textDecoration:"none",letterSpacing:1}}>CONTRACT</a>
+          <a href="https://zkverify-explorer.zkverify.io" target="_blank" rel="noopener noreferrer" style={{fontSize:10,color:"#3a4a5e",textDecoration:"none",letterSpacing:1}}>ZKVERIFY</a>
         </div>
-        <div style={{fontSize:10,color:"#4a5a6e",letterSpacing:1}}>ON-CHAIN · BASE · VRF</div>
+        <div style={{fontSize:10,color:"#2a3a4e",letterSpacing:1}}>ON-CHAIN · BASE · VRF</div>
       </footer>
 
       <style>{`
@@ -348,6 +361,8 @@ export default function HomePage() {
         @keyframes scanGlow{0%,100%{text-shadow:0 0 4px #3B7BF6}50%{text-shadow:0 0 12px #3B7BF6}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
         @keyframes caretBlink{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes navGlow{0%,100%{text-shadow:0 0 6px rgba(59,123,246,0.5)}50%{text-shadow:0 0 14px rgba(59,123,246,0.9)}}
+        @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 4px #3B7BF6}50%{opacity:0.4;box-shadow:0 0 10px #3B7BF6}}
         *{box-sizing:border-box}
         input::placeholder{color:#1e2e42}
         .steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -362,6 +377,7 @@ export default function HomePage() {
           .steps-grid{grid-template-columns:1fr}
           .four-col-grid{grid-template-columns:1fr}
         }
+
       `}</style>
     </div>
   );
