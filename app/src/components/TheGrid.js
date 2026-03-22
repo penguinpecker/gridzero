@@ -1201,13 +1201,14 @@ export default function TheGrid() {
                 </span>
               </div>
               <div style={{
-                display: "grid", gridTemplateColumns: "40px 60px 32px 1fr",
+                display: "grid", gridTemplateColumns: "40px 62px 32px 60px 1fr",
                 padding: "8px 16px 4px", gap: 4,
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>RESULT</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>ROUND</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>CELL</span>
+                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>ZERO</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>P&L</span>
               </div>
               <div className="grid-user-history-scroll" style={{ maxHeight: 240, overflowY: "auto" }}>
@@ -1220,7 +1221,7 @@ export default function TheGrid() {
                   const displayAmt = isWin ? (perWinner / 1e6) : 1;
                   return (
                     <div key={h.roundId} style={{
-                      display: "grid", gridTemplateColumns: "40px 60px 32px 1fr",
+                      display: "grid", gridTemplateColumns: "40px 62px 32px 60px 1fr",
                       padding: "7px 16px", gap: 4,
                       borderBottom: "1px solid rgba(255,255,255,0.03)",
                     }}>
@@ -1234,6 +1235,12 @@ export default function TheGrid() {
                       </span>
                       <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600, color: "#d0dce8" }}>#{h.roundId}</span>
                       <span style={{ fontSize: 11, color: "#8a9bae" }}>{CELL_LABELS[h.cell] || "?"}</span>
+                      <span style={{
+                        fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
+                        color: isWin ? "#1652F0" : "#2a3a4e", textAlign: "right",
+                      }}>
+                        {isWin ? "+100 Z" : "—"}
+                      </span>
                       <span style={{
                         fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 600,
                         color: isWin ? "#00cc88" : "#ff3355", textAlign: "right",
@@ -1307,7 +1314,7 @@ export default function TheGrid() {
               </div>
               {/* Column headers */}
               <div style={{
-                display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px 72px",
+                display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px",
                 padding: "8px 16px 4px", gap: 4,
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}>
@@ -1316,7 +1323,6 @@ export default function TheGrid() {
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>PLYR</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>POT</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>TRANSFER</span>
-                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>ZERO</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>VRF</span>
               </div>
               {/* Rows */}
@@ -1331,7 +1337,7 @@ export default function TheGrid() {
                   const isLatest = globalIdx === 0 && moneyFlow;
                   return (
                     <div key={r.roundId} style={{
-                      display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px 72px",
+                      display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px",
                       padding: "7px 16px", gap: 4,
                       borderBottom: "1px solid rgba(255,255,255,0.03)",
                       background: isLatest ? "rgba(255,200,0,0.06)" : "transparent",
@@ -1370,11 +1376,6 @@ export default function TheGrid() {
                         ) : (
                           <span style={{ fontSize: 10, color: "#2a3a4e" }}>—</span>
                         )}
-                      </span>
-                      <span style={{ textAlign: "right" }}>
-                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 600, color: "#1652F0" }}>
-                          +100 Z
-                        </span>
                       </span>
                       <span style={{ textAlign: "right" }}>
                         {r.zkverifyTxHash ? (
