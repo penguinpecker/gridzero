@@ -93,16 +93,18 @@ export default function HomePage() {
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:500,fontSize:16,color:"#e0e8f0",letterSpacing:2}}>ZERO</span>
           <div style={{width:6,height:6,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:4}}/>
         </div>
-        <nav style={{display:"flex",alignItems:"center",gap:6}}>
-          <button onClick={()=>router.push("/")} style={{background:"transparent",border:"1px solid rgba(22,82,240,0.25)",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#4a6aaa",cursor:"pointer",letterSpacing:2,padding:"6px 16px",borderRadius:3}}>HOME</button>
-          <div style={{position:"relative",display:"inline-block"}}>
-            <div style={{position:"absolute",top:-1,left:-1,width:6,height:6,borderLeft:"1px solid #3B7BF6",borderTop:"1px solid #3B7BF6",pointerEvents:"none"}}/>
-            <div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,borderRight:"1px solid #3B7BF6",borderBottom:"1px solid #3B7BF6",pointerEvents:"none"}}/>
-            <button onClick={()=>router.push("/play")} style={{background:"rgba(22,82,240,0.1)",border:"1px solid #3B7BF6",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"6px 16px",borderRadius:2,textShadow:"0 0 8px rgba(59,123,246,0.5)",animation:"navGlow 3s ease-in-out infinite"}}>PLAY ›</button>
-          </div>
+        <nav style={{display:"flex",alignItems:"center",gap:4}}>
+          <button onClick={()=>router.push("/")} className="nav-btn-home" style={{background:"transparent",border:"none",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#4a5a6e",cursor:"pointer",letterSpacing:2,padding:"7px 16px",borderRadius:3,transition:"color 0.2s"}}>HOME</button>
+          <button onClick={()=>router.push("/play")} className="nav-btn-play-hp" style={{background:"transparent",border:"none",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"7px 16px",borderRadius:3,animation:"navGlow 3s ease-in-out infinite",transition:"color 0.2s"}}>PLAY</button>
         </nav>
-        <div/>
+        <div style={{display:"flex",justifyContent:"flex-end"}}>
+          <button className="mobile-hamburger" onClick={()=>{const m=document.getElementById("hp-mobile-nav");if(m)m.style.display=m.style.display==="flex"?"none":"flex";}} style={{display:"none",background:"none",border:"1px solid rgba(22,82,240,0.2)",borderRadius:4,color:"#3B7BF6",cursor:"pointer",padding:"6px 10px",fontSize:16,lineHeight:1}}>☰</button>
+        </div>
       </header>
+      <div id="hp-mobile-nav" style={{display:"none",flexDirection:"column",background:"rgba(6,10,20,0.98)",borderBottom:"1px solid rgba(22,82,240,0.12)",position:"sticky",top:56,zIndex:99}}>
+        <button onClick={()=>router.push("/")} style={{background:"none",border:"none",borderBottom:"1px solid rgba(22,82,240,0.08)",fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,color:"#4a5a6e",cursor:"pointer",letterSpacing:2,padding:"14px 20px",textAlign:"left"}}>HOME</button>
+        <button onClick={()=>router.push("/play")} style={{background:"none",border:"none",fontFamily:"Orbitron,sans-serif",fontSize:11,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"14px 20px",textAlign:"left"}}>PLAY</button>
+      </div>
 
       {/* ── HERO — single column ── */}
       <section style={{position:"relative",zIndex:5,padding:"56px 20px 40px",maxWidth:680,margin:"0 auto"}}>
@@ -362,6 +364,13 @@ export default function HomePage() {
         @keyframes scanGlow{0%,100%{text-shadow:0 0 4px #3B7BF6}50%{text-shadow:0 0 12px #3B7BF6}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
         @keyframes caretBlink{0%,100%{opacity:1}50%{opacity:0}}
+        .nav-btn-home:hover{color:#3B7BF6!important}
+        .nav-btn-play-hp:hover{color:#7ab4ff!important}
+        .mobile-hamburger{display:none}
+        @media(max-width:600px){
+          header nav{display:none!important}
+          .mobile-hamburger{display:flex!important}
+        }
         @keyframes navGlow{0%,100%{text-shadow:0 0 6px rgba(59,123,246,0.5)}50%{text-shadow:0 0 14px rgba(59,123,246,0.9)}}
         @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 4px #3B7BF6}50%{opacity:0.4;box-shadow:0 0 10px #3B7BF6}}
         *{box-sizing:border-box}

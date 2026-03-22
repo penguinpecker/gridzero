@@ -833,13 +833,9 @@ export default function TheGrid() {
           <div style={{width:6,height:6,borderRadius:"50%",background:"#3B7BF6",boxShadow:"0 0 6px #3B7BF6",animation:"pulse 2s ease-in-out infinite",marginLeft:4,flexShrink:0}}/>
         </div>
         {/* Center — nav */}
-        <nav style={{display:"flex",alignItems:"center",gap:6}}>
-          <button onClick={()=>window.location.href="/"} style={{background:"transparent",border:"1px solid rgba(22,82,240,0.25)",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#4a6aaa",cursor:"pointer",letterSpacing:2,padding:"6px 14px",borderRadius:3}}>HOME</button>
-          <div style={{position:"relative",display:"inline-block"}}>
-            <div style={{position:"absolute",top:-1,left:-1,width:6,height:6,borderLeft:"1px solid #3B7BF6",borderTop:"1px solid #3B7BF6",pointerEvents:"none"}}/>
-            <div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,borderRight:"1px solid #3B7BF6",borderBottom:"1px solid #3B7BF6",pointerEvents:"none"}}/>
-            <button style={{background:"rgba(22,82,240,0.1)",border:"1px solid #3B7BF6",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"default",letterSpacing:2,padding:"6px 14px",borderRadius:2,textShadow:"0 0 8px rgba(59,123,246,0.5)",animation:"navGlow 3s ease-in-out infinite"}}>PLAY ›</button>
-          </div>
+        <nav style={{display:"flex",alignItems:"center",gap:4}}>
+          <button onClick={()=>window.location.href="/"} className="nav-btn-home" style={{background:"transparent",border:"none",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#4a5a6e",cursor:"pointer",letterSpacing:2,padding:"7px 16px",borderRadius:3,transition:"color 0.2s"}}>HOME</button>
+          <button className="nav-btn-play" style={{background:"transparent",border:"none",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"default",letterSpacing:2,padding:"7px 16px",borderRadius:3,animation:"navGlow 3s ease-in-out infinite"}}>PLAY</button>
         </nav>
         {/* Right — balances + wallet */}
         <div style={{...S.hRight, gap:10, justifyContent:"flex-end"}}>
@@ -1632,6 +1628,13 @@ export default function TheGrid() {
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes navGlow { 0%,100%{text-shadow:0 0 6px rgba(59,123,246,0.5)}50%{text-shadow:0 0 14px rgba(59,123,246,0.9)} }
         @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 4px #3B7BF6}50%{opacity:0.4;box-shadow:0 0 10px #3B7BF6} }
+        .nav-btn-home:hover { color: #3B7BF6 !important; }
+        .nav-btn-play { pointer-events: none; }
+        @media (max-width: 600px) {
+          .grid-header nav { display: none !important; }
+          .grid-header-stat { display: none !important; }
+          .grid-mobile-balances { display: flex !important; }
+        }
         @keyframes dropIn {
           from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
