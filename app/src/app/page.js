@@ -86,7 +86,7 @@ export default function HomePage() {
       <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:2,transition:"background 0.04s linear",background:scanBg}}/>
 
       {/* Header */}
-      <header style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 24px",height:56,borderBottom:"1px solid rgba(22,82,240,0.12)",background:"rgba(6,10,20,0.97)",zIndex:100,position:"sticky",top:0,boxShadow:"0 1px 0 rgba(22,82,240,0.08)"}}>
+      <header style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 24px",height:56,borderBottom:"1px solid rgba(22,82,240,0.12)",background:"rgba(6,10,20,0.97)",zIndex:100,position:"sticky",top:0}}>
         <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>router.push("/")}>
           <LogoIcon size={26}/>
           <span style={{fontFamily:"Orbitron,sans-serif",fontWeight:900,fontSize:16,color:"#3B7BF6",letterSpacing:2}}>GRID</span>
@@ -97,9 +97,7 @@ export default function HomePage() {
           <button onClick={()=>router.push("/")} className="nav-btn-home" style={{background:"transparent",border:"none",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#4a5a6e",cursor:"pointer",letterSpacing:2,padding:"7px 16px",borderRadius:3,transition:"color 0.2s"}}>HOME</button>
           <button onClick={()=>router.push("/play")} className="nav-btn-play-hp" style={{background:"transparent",border:"none",fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"pointer",letterSpacing:2,padding:"7px 16px",borderRadius:3,animation:"navGlow 3s ease-in-out infinite",transition:"color 0.2s"}}>PLAY</button>
         </nav>
-        <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <button onClick={()=>router.push("/play")} style={{fontFamily:"Orbitron,sans-serif",fontSize:10,fontWeight:700,padding:"7px 14px",borderRadius:5,border:"1px solid rgba(22,82,240,0.3)",background:"rgba(22,82,240,0.08)",color:"#3B7BF6",cursor:"pointer",letterSpacing:1.5,whiteSpace:"nowrap"}}>CONNECT WALLET</button>
-        </div>
+        <div/>
       </header>
 
       {/* ── HERO — single column ── */}

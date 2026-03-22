@@ -824,7 +824,7 @@ export default function TheGrid() {
       <div style={S.crtLines} />
 
       {/* ─── HEADER ─── */}
-      <header style={{...S.header, display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 16px", gap:6, overflow:"hidden"}} className="grid-header">
+      <header style={{...S.header, display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 12px", gap:4}} className="grid-header">
         {/* Left — logo, clickable */}
         <div style={{...S.hLeft, cursor:"pointer", flexShrink:0}} onClick={()=>window.location.href="/"}>
           <LogoIcon size={22} />
@@ -838,7 +838,7 @@ export default function TheGrid() {
           <button className="nav-btn-play" style={{background:"transparent",border:"none",fontFamily:"'Orbitron',sans-serif",fontSize:10,fontWeight:700,color:"#3B7BF6",cursor:"default",letterSpacing:1.5,padding:"6px 10px",borderRadius:3,animation:"navGlow 3s ease-in-out infinite"}}>PLAY</button>
         </nav>
         {/* Right — balances + wallet */}
-        <div style={{...S.hRight, gap:6, justifyContent:"flex-end", flexShrink:0, minWidth:0}}>
+        <div style={{...S.hRight, gap:6, justifyContent:"flex-end", flexShrink:0}}>
           {authenticated && (
             <>
               <span style={S.hStat} className="grid-header-stat">
