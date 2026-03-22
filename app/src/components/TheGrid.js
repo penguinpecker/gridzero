@@ -1150,18 +1150,18 @@ export default function TheGrid() {
 
           {/* Approve USDC — one-time, shows when connected but not approved */}
           {authenticated && allowanceChecked && !usdcApproved && !approving && (
-            <button style={{ ...S.claimBtn, maxWidth: 520, marginTop: 12, background: "linear-gradient(135deg, #3B7BF6, #1652F0)" }} onClick={approveUsdc}>
+            <button style={{ ...S.claimBtn, maxWidth: 620, marginTop: 12, background: "linear-gradient(135deg, #3B7BF6, #1652F0)" }} onClick={approveUsdc}>
               🔓 APPROVE USDC TO PLAY (ONE-TIME)
             </button>
           )}
           {approving && (
-            <div style={{ ...S.claimingBar, maxWidth: 520, marginTop: 12 }}><div style={S.claimingDot} />APPROVING USDC...</div>
+            <div style={{ ...S.claimingBar, maxWidth: 620, marginTop: 12 }}><div style={S.claimingDot} />APPROVING USDC...</div>
           )}
 
           {/* Quick instruction */}
           {authenticated && usdcApproved && playerCell < 0 && !resolved && smoothTime > 0 && (
             <div style={{
-              width: "100%", maxWidth: 520, textAlign: "center",
+              width: "100%", maxWidth: 620, textAlign: "center",
               padding: "8px 12px", marginTop: 6,
               fontSize: 10, letterSpacing: 1.5, color: "#4a5a6e",
               fontFamily: "'JetBrains Mono', monospace",
@@ -1177,13 +1177,13 @@ export default function TheGrid() {
             </button>
           )}
           {claiming && (
-            <div style={{ ...S.claimingBar, maxWidth: 520, marginTop: 12 }}><div style={S.claimingDot} />CONFIRMING TX...</div>
+            <div style={{ ...S.claimingBar, maxWidth: 620, marginTop: 12 }}><div style={S.claimingDot} />CONFIRMING TX...</div>
           )}
 
           {/* ─── MOBILE USER HISTORY (hidden on desktop, shown on mobile) ─── */}
           {authenticated && userHistory.length > 0 && (
             <div className="grid-mobile-user-history" style={{
-              width: "100%", maxWidth: 520, marginTop: 14,
+              width: "100%", maxWidth: 620, marginTop: 14,
               borderRadius: 10,
               border: "1px solid rgba(22,82,240,0.2)",
               background: "rgba(22,82,240,0.03)",
@@ -1307,7 +1307,7 @@ export default function TheGrid() {
               </div>
               {/* Column headers */}
               <div style={{
-                display: "grid", gridTemplateColumns: "60px 50px 45px 65px 1fr 1fr",
+                display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px 72px",
                 padding: "8px 16px 4px", gap: 4,
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}>
@@ -1316,6 +1316,7 @@ export default function TheGrid() {
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>PLYR</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>POT</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>TRANSFER</span>
+                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>ZERO</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>VRF</span>
               </div>
               {/* Rows */}
@@ -1330,7 +1331,7 @@ export default function TheGrid() {
                   const isLatest = globalIdx === 0 && moneyFlow;
                   return (
                     <div key={r.roundId} style={{
-                      display: "grid", gridTemplateColumns: "60px 50px 45px 65px 1fr 1fr",
+                      display: "grid", gridTemplateColumns: "62px 50px 40px 60px 1fr 80px 72px",
                       padding: "7px 16px", gap: 4,
                       borderBottom: "1px solid rgba(255,255,255,0.03)",
                       background: isLatest ? "rgba(255,200,0,0.06)" : "transparent",
@@ -1369,6 +1370,11 @@ export default function TheGrid() {
                         ) : (
                           <span style={{ fontSize: 10, color: "#2a3a4e" }}>—</span>
                         )}
+                      </span>
+                      <span style={{ textAlign: "right" }}>
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 600, color: "#1652F0" }}>
+                          +100 Z
+                        </span>
                       </span>
                       <span style={{ textAlign: "right" }}>
                         {r.zkverifyTxHash ? (
@@ -1657,17 +1663,17 @@ const S = {
   },
   header: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "12px 20px", borderBottom: "1px solid rgba(22,82,240,0.12)",
-    background: "rgba(8,12,22,0.95)", zIndex: 10, position: "relative",
-    flexWrap: "wrap", gap: 8,
+    padding: "0 20px", height: 64, borderBottom: "1px solid rgba(22,82,240,0.12)",
+    background: "rgba(8,12,22,0.97)", zIndex: 10, position: "relative",
+    flexWrap: "nowrap", gap: 8, flexShrink: 0,
   },
-  hLeft: { display: "flex", alignItems: "center", gap: 8 },
-  hRight: { display: "flex", alignItems: "center", gap: 16 },
+  hLeft: { display: "flex", alignItems: "center", gap: 10, flexShrink: 0 },
+  hRight: { display: "flex", alignItems: "center", gap: 12, flexShrink: 0 },
   dot: { width: 10, height: 10, borderRadius: 3, background: "#1652F0", boxShadow: "0 0 12px rgba(22,82,240,0.6)" },
-  logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 18, color: "#3B7BF6", letterSpacing: 3 },
-  logoSub: { fontFamily: "'Orbitron', sans-serif", fontWeight: 500, fontSize: 18, color: "#e0e8f0", letterSpacing: 2 },
+  logo: { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: 20, color: "#3B7BF6", letterSpacing: 3 },
+  logoSub: { fontFamily: "'Orbitron', sans-serif", fontWeight: 500, fontSize: 20, color: "#e0e8f0", letterSpacing: 2 },
   badge: { fontSize: 9, padding: "2px 6px", borderRadius: 3, background: "rgba(22,82,240,0.12)", color: "#3B7BF6", letterSpacing: 1.5, fontWeight: 600 },
-  hStat: { fontSize: 12, color: "#7a8b9e", letterSpacing: 0.5 },
+  hStat: { fontSize: 13, color: "#7a8b9e", letterSpacing: 0.5, fontFamily: "'JetBrains Mono', monospace" },
   loginBtn: {
     fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 700,
     padding: "8px 16px", borderRadius: 6,
@@ -1678,12 +1684,12 @@ const S = {
   menuBtn: { fontSize: 20, background: "none", border: "1px solid rgba(255,255,255,0.15)", color: "#c8d6e5", borderRadius: 6, padding: "4px 10px", cursor: "pointer" },
   main: { display: "flex", flex: 1, gap: 0, position: "relative", zIndex: 5 },
   gridArea: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "16px 24px", minHeight: 0, overflowY: "auto" },
-  timerWrap: { width: "100%", maxWidth: 520, display: "flex", alignItems: "center", gap: 12, marginBottom: 12 },
+  timerWrap: { width: "100%", maxWidth: 620, display: "flex", alignItems: "center", gap: 12, marginBottom: 12 },
   timerBarBg: { flex: 1, height: 12, borderRadius: 6, background: "rgba(255,255,255,0.08)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" },
   timerBarFill: { height: "100%", borderRadius: 6 },
   timerNum: { fontFamily: "'Orbitron', sans-serif", fontSize: 20, fontWeight: 700, transition: "color 0.5s ease" },
   timerMs: { fontSize: 14, opacity: 0.7 },
-  gridOuter: { position: "relative", width: "100%", maxWidth: 520, padding: 12 },
+  gridOuter: { position: "relative", width: "100%", maxWidth: 620, padding: 12 },
   cornerTL: { position: "absolute", top: 0, left: 0, width: 20, height: 20, borderLeft: "2px solid rgba(22,82,240,0.4)", borderTop: "2px solid rgba(22,82,240,0.4)" },
   cornerTR: { position: "absolute", top: 0, right: 0, width: 20, height: 20, borderRight: "2px solid rgba(22,82,240,0.4)", borderTop: "2px solid rgba(22,82,240,0.4)" },
   cornerBL: { position: "absolute", bottom: 0, left: 0, width: 20, height: 20, borderLeft: "2px solid rgba(22,82,240,0.4)", borderBottom: "2px solid rgba(22,82,240,0.4)" },
@@ -1743,8 +1749,8 @@ const S = {
   cellSelected: { background: "rgba(22,82,240,0.22)", borderColor: "#1652F0", color: "#fff", boxShadow: "0 0 24px rgba(22,82,240,0.4)" },
   cellLabel: { letterSpacing: 1 },
   cellIcon: { fontSize: 16 },
-  statusBar: { display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 520, padding: "8px 12px", marginTop: 8, fontSize: 11, letterSpacing: 1.5, color: "#5a6a7e" },
-  dots: { display: "flex", gap: 3, width: "100%", maxWidth: 520, padding: "0 12px" },
+  statusBar: { display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 620, padding: "8px 12px", marginTop: 8, fontSize: 11, letterSpacing: 1.5, color: "#5a6a7e" },
+  dots: { display: "flex", gap: 3, width: "100%", maxWidth: 620, padding: "0 12px" },
   progressDot: { flex: 1, height: 3, borderRadius: 2, transition: "background-color 0.5s ease" },
   sidebar: {
     width: 340, minWidth: 300, borderLeft: "1px solid rgba(22,82,240,0.08)",
