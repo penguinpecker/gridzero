@@ -868,7 +868,18 @@ export default function TheGrid() {
                 ...S.loginBtn,
                 display: "flex", alignItems: "center", gap: 6,
               }} onClick={() => { setWalletDropdown(!walletDropdown); setWalletView("menu"); }}>
-                {address ? <><span className="wallet-addr-full">{address.slice(0, 6)}...{address.slice(-4)}</span><span className="wallet-addr-short">{address.slice(0, 4)}…{address.slice(-3)}</span></> : "WALLET"}
+                {/* Desktop: just address */}
+                <span className="wallet-addr-desktop">
+                  {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "WALLET"}
+                </span>
+                {/* Mobile: balances + short address */}
+                <span className="wallet-addr-mobile" style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "nowrap" }}>
+                  <span style={{ fontSize: 10, color: "#3B7BF6", fontWeight: 700 }}>{fmt(ethBalance, 2)}<span style={{ fontSize: 9, opacity: 0.7 }}> U</span></span>
+                  <span style={{ color: "#2a3a4e", fontSize: 9 }}>|</span>
+                  <span style={{ fontSize: 10, color: "#1652F0", fontWeight: 700 }}>{fmtEth(gridBalance, 0)}<span style={{ fontSize: 9, opacity: 0.7 }}> Z</span></span>
+                  <span style={{ color: "#2a3a4e", fontSize: 9 }}>·</span>
+                  <span style={{ fontSize: 9 }}>{address ? `${address.slice(0, 4)}…${address.slice(-3)}` : "W"}</span>
+                </span>
                 <span style={{ fontSize: 8, opacity: 0.6, transition: "transform 0.2s", transform: walletDropdown ? "rotate(180deg)" : "none" }}>▼</span>
               </button>
               {walletDropdown && walletView === "menu" && (
@@ -1201,13 +1212,15 @@ export default function TheGrid() {
                 </span>
               </div>
               <div style={{
-                display: "grid", gridTemplateColumns: "40px 62px 32px 60px 1fr",
+                display: "grid", gridTemplateColumns: "38px 64px 30px 44px 28px 52px 1fr",
                 padding: "8px 16px 4px", gap: 4,
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
               }}>
-                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>RESULT</span>
+                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>RES</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>ROUND</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700 }}>CELL</span>
+                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>POT</span>
+                <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>PLYR</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>ZERO</span>
                 <span style={{ fontSize: 9, color: "#4a5a6e", letterSpacing: 1.5, fontWeight: 700, textAlign: "right" }}>P&L</span>
               </div>
@@ -1221,7 +1234,7 @@ export default function TheGrid() {
                   const displayAmt = isWin ? (perWinner / 1e6) : 1;
                   return (
                     <div key={h.roundId} style={{
-                      display: "grid", gridTemplateColumns: "40px 62px 32px 60px 1fr",
+                      display: "grid", gridTemplateColumns: "38px 64px 30px 44px 28px 52px 1fr",
                       padding: "7px 16px", gap: 4,
                       borderBottom: "1px solid rgba(255,255,255,0.03)",
                     }}>
@@ -1529,16 +1542,14 @@ export default function TheGrid() {
         @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 4px #3B7BF6}50%{opacity:0.4;box-shadow:0 0 10px #3B7BF6} }
         .nav-btn-home:hover { color: #3B7BF6 !important; }
         .nav-btn-play { pointer-events: none; }
+        .wallet-addr-mobile { display: none !important; }
+        .wallet-addr-desktop { display: inline !important; }
         @media (max-width: 640px) {
           .grid-header-nav { display: none !important; }
           .grid-header-stat { display: none !important; }
-          .grid-mobile-balances { display: flex !important; }
-          .wallet-addr-full { display: none !important; }
-          .wallet-addr-short { display: inline !important; }
-          .grid-mobile-balances { font-size: 10px !important; gap: 5px !important; }
-        }
-        @media (min-width: 641px) {
-          .wallet-addr-short { display: none !important; }
+          .grid-mobile-balances { display: none !important; }
+          .wallet-addr-desktop { display: none !important; }
+          .wallet-addr-mobile { display: flex !important; }
         }
         @keyframes dropIn {
           from { opacity: 0; transform: translateY(-6px); }
@@ -1602,10 +1613,7 @@ export default function TheGrid() {
           }
           .grid-header-stat { display: none !important; }
           .grid-mobile-balances { display: flex !important; }
-          .grid-header-wallet-btn { font-size: 10px !important; padding: 5px 8px !important; max-width: 110px !important; overflow: hidden; }
-          .wallet-addr-full { display: none !important; }
-          .wallet-addr-short { display: inline !important; }
-          .grid-mobile-balances { font-size: 10px !important; gap: 4px !important; }
+          .grid-header-wallet-btn { font-size: 10px !important; }
         }
 
       `}</style>
