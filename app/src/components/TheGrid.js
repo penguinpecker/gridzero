@@ -190,10 +190,27 @@ export default function TheGrid() {
   const resolverCalledForRound = useRef(0);
   const resolvedRef = useRef(false);
 
+  // ─── Refresh top of history table (picks up TX hash immediately, ZKV hash after finality) ───
+  const refreshHistoryTop = () => {
+    fetchRoundHistory(0, HISTORY_PAGE_SIZE).then(fresh => {
+      if (!fresh.length) return;
+      setRoundHistory(prev => {
+        const freshIds = new Set(fresh.map(r => r.roundId));
+        const older = prev.filter(r => !freshIds.has(r.roundId));
+        return [...fresh, ...older];
+      });
+    });
+  };
+
   // ─── SSE: Real-time events from resolver ───
   const { connected: sseConnected } = useResolverSSE({
     url: "https://extraordinary-integrity-production-0b2a.up.railway.app/events",
-    onRoundResolved: () => pollState(),
+    onRoundResolved: () => {
+      pollState();
+      // Fetch TX hash immediately, ZKV hash after ~25s finality window
+      setTimeout(refreshHistoryTop, 3000);
+      setTimeout(refreshHistoryTop, 25000);
+    },
     onCellPicked: (data) => {
       setCellCounts(prev => {
         const next = [...prev];
@@ -1301,14 +1318,7 @@ export default function TheGrid() {
                             {r.txHash.slice(0, 6)}…{r.txHash.slice(-4)} ↗
                           </a>
                         ) : (
-                          <a
-                            href={`${EXPLORER}/address/${GRID_ADDR}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ fontSize: 10, color: "#5a6a7e", textDecoration: "none" }}
-                          >
-                            Explorer ↗
-                          </a>
+                          <span style={{ fontSize: 10, color: "#2a3a4e" }}>—</span>
                         )}
                       </span>
                       <span style={{ textAlign: "right" }}>

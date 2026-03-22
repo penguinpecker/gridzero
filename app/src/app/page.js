@@ -99,24 +99,20 @@ export default function HomePage() {
       {/* ── HERO — single column ── */}
       <section style={{position:"relative",zIndex:5,padding:"56px 20px 40px",maxWidth:680,margin:"0 auto"}}>
 
-        {/* Title block */}
-        <div style={{marginBottom:24}}>
-          <div style={{fontSize:10,letterSpacing:3,color:"#3B7BF6",fontWeight:700,marginBottom:12}}>● LIVE ON BASE MAINNET</div>
-          <div style={{fontFamily:"Orbitron,sans-serif",fontWeight:900,lineHeight:1.1,letterSpacing:1,marginBottom:16,fontSize:"clamp(32px,8vw,56px)"}}>
+        {/* Title block — centered */}
+        <div style={{marginBottom:32,textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center"}}>
+          <div style={{fontSize:10,letterSpacing:3,color:"#3B7BF6",fontWeight:700,marginBottom:14}}>● LIVE ON BASE MAINNET</div>
+          <div style={{fontFamily:"Orbitron,sans-serif",fontWeight:900,lineHeight:1.1,letterSpacing:1,marginBottom:18,fontSize:"clamp(36px,9vw,64px)"}}>
             <div style={{color:"#3B7BF6"}}>ONCHAIN</div>
             <div style={{color:"#e0e8f0"}}>BETTING</div>
           </div>
-          <div style={{fontSize:13,color:"#7a8b9e",lineHeight:1.8,marginBottom:20,maxWidth:520}}>
+          <div style={{fontSize:13,color:"#7a8b9e",lineHeight:1.8,marginBottom:22,maxWidth:520}}>
             Pick a cell on the 5×5 grid. A Groth16 ZK proof selects the winner from occupied cells only. Winners share the pot — or keep everything if they picked alone.
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
             {["1 USDC per round","60s rounds","ZK proof every round","Auto-pay on resolve"].map(c=>(
               <div key={c} style={{fontSize:10,padding:"4px 10px",borderRadius:4,background:"rgba(22,82,240,0.07)",border:"1px solid rgba(22,82,240,0.15)",color:"#7a8b9e"}}>{c}</div>
             ))}
-          </div>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            <button onClick={()=>router.push("/play")} style={{fontFamily:"Orbitron,sans-serif",fontSize:12,fontWeight:700,padding:"13px 28px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#1652F0,#3B7BF6)",color:"#fff",cursor:"pointer",letterSpacing:1,boxShadow:"0 4px 24px rgba(22,82,240,0.3)"}}>PLAY NOW →</button>
-            <button onClick={()=>document.getElementById("how-section").scrollIntoView({behavior:"smooth"})} style={{fontFamily:"JetBrains Mono,monospace",fontSize:11,padding:"11px 20px",borderRadius:6,border:"1px solid rgba(22,82,240,0.25)",background:"none",color:"#4a5a6e",cursor:"pointer",letterSpacing:1}}>HOW IT WORKS</button>
           </div>
         </div>
 
