@@ -1558,7 +1558,7 @@ export default function TheGrid() {
         .grid-user-history-scroll::-webkit-scrollbar-track { background: rgba(22,82,240,0.04); }
         .grid-user-history-scroll::-webkit-scrollbar-thumb { background: rgba(22,82,240,0.25); border-radius: 2px; }
         @media (max-width: 768px) {
-          .grid-wallet-dropdown { width: calc(100vw - 32px) !important; max-width: 300px !important; right: -10px !important; }
+          .grid-wallet-dropdown { right: 0 !important; left: auto !important; max-width: calc(100vw - 16px) !important; }
         }
         @media (max-width: 768px) {
           .grid-main { flex-direction: column !important; }
