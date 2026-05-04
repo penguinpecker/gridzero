@@ -1402,7 +1402,7 @@ export default function TheGrid() {
                       <span style={{ textAlign: "right" }}>
                         {r.zkverifyTxHash ? (
                           <a
-                            href={`https://zkverify-explorer.zkverify.io/extrinsics/${r.zkverifyTxHash}`}
+                            href={`https://zkverify.subscan.io/extrinsic/${r.zkverifyTxHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: 10, color: "#00cc88", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace" }}

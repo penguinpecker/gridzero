@@ -347,7 +347,7 @@ export default function HomePage() {
             @gridzerogg
           </a>
           <a href="#" target="_blank" rel="noopener noreferrer" style={{fontSize:10,color:"#3a4a5e",textDecoration:"none",letterSpacing:1}}>CONTRACT</a>
-          <a href="https://zkverify-explorer.zkverify.io" target="_blank" rel="noopener noreferrer" style={{fontSize:10,color:"#3a4a5e",textDecoration:"none",letterSpacing:1}}>ZKVERIFY</a>
+          <a href="https://zkverify.subscan.io" target="_blank" rel="noopener noreferrer" style={{fontSize:10,color:"#3a4a5e",textDecoration:"none",letterSpacing:1}}>ZKVERIFY</a>
         </div>
         <div style={{fontSize:10,color:"#2a3a4e",letterSpacing:1}}>ON-CHAIN · BASE · VRF</div>
       </footer>
