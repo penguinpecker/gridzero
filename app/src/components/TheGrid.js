@@ -4,6 +4,7 @@ import { usePrivy, useWallets, useSendTransaction } from "@privy-io/react-auth";
 import { useResolverSSE } from "./useResolverSSE";
 import { createPublicClient, http, fallback, parseUnits, encodeFunctionData } from "viem";
 import { base } from "viem/chains";
+import { withAttribution } from "@/lib/attribution";
 
 // ═══════════════════════════════════════════════════════════════
 // V4 CONTRACT ABI — GridZero: Round-Based Betting on Base (Auto-Pay)
@@ -665,7 +666,7 @@ export default function TheGrid() {
         args: [GRID_ADDR, parseUnits(approvalAmt, 6)],
       });
       const receipt = await sendTransaction(
-        { to: USDC_ADDR, data: approveData, chainId: 8453 },
+        { to: USDC_ADDR, data: withAttribution(approveData), chainId: 8453 },
         { sponsor: true }
       );
       await publicClient.waitForTransactionReceipt({ hash: receipt.hash });
@@ -695,7 +696,7 @@ export default function TheGrid() {
 
       // Send sponsored tx via Privy
       const receipt = await sendTransaction(
-        { to: GRID_ADDR, data, chainId: 8453 },
+        { to: GRID_ADDR, data: withAttribution(data), chainId: 8453 },
         { sponsor: true }
       );
 
@@ -752,7 +753,7 @@ export default function TheGrid() {
         args: [withdrawAddr.trim(), parseUnits(withdrawAmt, 6)],
       });
       const receipt = await sendTransaction(
-        { to: USDC_ADDR, data: transferData, chainId: 8453 },
+        { to: USDC_ADDR, data: withAttribution(transferData), chainId: 8453 },
         { sponsor: true }
       );
       addFeed(`↗ Withdrawing ${withdrawAmt} USDC...`);
