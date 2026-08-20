@@ -2,10 +2,10 @@ import { createPublicClient, http, fallback } from "viem";
 import { base } from "viem/chains";
 
 // ═══════════════════════════════════════════════════════════════
-// Contract Addresses — Base Mainnet (V3)
+// Contract Addresses — Base Mainnet (UUPS proxies)
 // ═══════════════════════════════════════════════════════════════
-export const GRIDZERO_V3_ADDR = "0xa106dD7567e5d4368C325f4aB1022a8f1786a59f";
-export const ZERO_TOKEN_ADDR = "0xB68409d54a5a28e9ca6c2B7A54F3DD78E6Eef859";
+export const GRIDZERO_ADDR = "0xCBFF780A019524a3aE909758f6A6E6108A2A63D5";
+export const ZERO_TOKEN_ADDR = "0xB13ebbb116fFcA7DF2B7467170D691DF671620A8";
 export const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 // ═══════════════════════════════════════════════════════════════

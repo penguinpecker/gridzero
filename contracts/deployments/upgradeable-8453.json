@@ -1,0 +1,25 @@
+{
+  "network": "base-mainnet",
+  "chainId": 8453,
+  "deployedAt": "2026-08-20T12:07:41.818Z",
+  "deployer": "0x36aa36AdEf6E22BC795E1956058dED2D16BF04A2",
+  "pattern": "UUPS (ERC1967)",
+  "contracts": {
+    "GridZero": {
+      "proxy": "0xCBFF780A019524a3aE909758f6A6E6108A2A63D5",
+      "implementation": "0xf4ee8fd3611ce7e22dcd9c456249f0802f9fca51"
+    },
+    "ZeroToken": {
+      "proxy": "0xB13ebbb116fFcA7DF2B7467170D691DF671620A8",
+      "implementation": "0xCbc050A94f94b1283b7Ea6250cC50FD331C93330"
+    },
+    "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+  },
+  "config": {
+    "fulfiller": "0xAFd7b1eB1f78c47b603C670f47956cDC9977998E",
+    "feeRecipient": "0x36aa36AdEf6E22BC795E1956058dED2D16BF04A2",
+    "entryFee": "1000000",
+    "roundDuration": 30,
+    "protocolFeeBps": 500
+  }
+}

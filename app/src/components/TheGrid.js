@@ -8,8 +8,8 @@ import { withAttribution } from "@/lib/attribution";
 
 // ═══════════════════════════════════════════════════════════════
 // V4 CONTRACT ABI — GridZero: Round-Based Betting on Base (Auto-Pay)
-// GridZeroV4: 0x58497ADCc524ee9a0DA11900af32bFa973fE55d3
-// ZeroToken: 0x5E9335199d98402897fA5d3A5F21572280cdCDD0
+// GridZero (UUPS proxy): 0xCBFF780A019524a3aE909758f6A6E6108A2A63D5
+// ZeroToken (UUPS proxy): 0xB13ebbb116fFcA7DF2B7467170D691DF671620A8
 // USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 // Chain: Base Mainnet (8453)
 // ═══════════════════════════════════════════════════════════════
@@ -78,8 +78,8 @@ const USDC_ABI = [
     inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
 ];
 
-const GRID_ADDR = "0x58497ADCc524ee9a0DA11900af32bFa973fE55d3";
-const TOKEN_ADDR = "0x5E9335199d98402897fA5d3A5F21572280cdCDD0";
+const GRID_ADDR = "0xCBFF780A019524a3aE909758f6A6E6108A2A63D5";
+const TOKEN_ADDR = "0xB13ebbb116fFcA7DF2B7467170D691DF671620A8";
 const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const CELL_COST = "1";  // 1 USDC
 const CELL_COST_RAW = 1000000n; // 1 USDC in 6 decimals
