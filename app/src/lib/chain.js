@@ -77,12 +77,13 @@ export const ERC20_ABI = [
 // ═══════════════════════════════════════════════════════════════
 // Public Client — Base Mainnet
 // ═══════════════════════════════════════════════════════════════
-const ALCHEMY_RPC = process.env.NEXT_PUBLIC_ALCHEMY_RPC || "https://base-mainnet.g.alchemy.com/v2/r6XQwbj3aRRGWp-oJkR7f";
+// Routed through our own /api/rpc so the upstream key stays server-side.
+const RPC_URL = "/api/rpc";
 
 export const publicClient = createPublicClient({
   chain: base,
   transport: fallback([
-    http(ALCHEMY_RPC, { timeout: 30_000, retryCount: 2, retryDelay: 1000 }),
+    http(RPC_URL, { timeout: 30_000, retryCount: 2, retryDelay: 1000 }),
     http("https://mainnet.base.org", { timeout: 30_000, retryCount: 2, retryDelay: 2000 }),
   ]),
 });

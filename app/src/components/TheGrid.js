@@ -96,14 +96,15 @@ for (let r = 0; r < GRID_SIZE; r++)
   for (let c = 0; c < GRID_SIZE; c++)
     CELL_LABELS.push(`${String.fromCharCode(65 + r)}${c + 1}`);
 
-// Our own public client — WE control the RPC, not MetaMask
-const ALCHEMY_RPC = process.env.NEXT_PUBLIC_ALCHEMY_RPC || "https://base-mainnet.g.alchemy.com/v2/r6XQwbj3aRRGWp-oJkR7f";
+// Our own public client — WE control the RPC, not MetaMask.
+// Routed through our own /api/rpc so the upstream key stays server-side.
+const RPC_URL = "/api/rpc";
 
 const publicClient = createPublicClient({
   chain: base,
   batch: { multicall: true },
   transport: fallback([
-    http(ALCHEMY_RPC, {
+    http(RPC_URL, {
       timeout: 8_000,
       retryCount: 2,
       retryDelay: 500,
